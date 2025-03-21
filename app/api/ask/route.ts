@@ -1,15 +1,7 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
-import { MedicalQuestionClassifier } from '../../services/classification';
-import { ContextualRelevanceAnalyzer } from '../../services/contextualRelevance';
-import { timeEstimator } from '../../services/timeEstimation';
-
-const client = new OpenAI({
-  apiKey: process.env['OPENAI_API_KEY'],
-});
-
-const classifier = new MedicalQuestionClassifier();
-const contextAnalyzer = new ContextualRelevanceAnalyzer();
+import { serviceFactory } from '../../services/serviceFactory';
+import { env } from '../../lib/env';
 
 /**
  * Handles non-streaming answer generation
@@ -17,9 +9,17 @@ const contextAnalyzer = new ContextualRelevanceAnalyzer();
 export async function POST(request: Request) {
   const { question, history } = await request.json();
 
-  console.log("process.env['OPENAI_API_KEY']:", process.env['OPENAI_API_KEY']);
-
   try {
+    // Initialize OpenAI client with API key from environment
+    const client = new OpenAI({
+      apiKey: env.get('OPENAI_API_KEY'),
+    });
+
+    // Get service instances from the factory
+    const classifier = serviceFactory.getClassifierService();
+    const contextAnalyzer = serviceFactory.getContextualRelevanceAnalyzer();
+    const timeEstimator = serviceFactory.getTimeEstimator();
+    
     // Classify the question to estimate response time
     const classification = await classifier.classifyQuestion(question);
     
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       messages: [
         ...history,
         { role: 'user', content: question }],
-      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      model: env.get('OPENAI_MODEL'),
     });
     
     // Complete progress tracking
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       timeEstimate
     });
   } catch (error: any) {
+    console.error('Error in POST /api/ask:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -73,6 +74,16 @@ export async function GET(request: Request) {
   }
   
   try {
+    // Initialize OpenAI client with API key from environment
+    const client = new OpenAI({
+      apiKey: env.get('OPENAI_API_KEY'),
+    });
+
+    // Get service instances from the factory
+    const classifier = serviceFactory.getClassifierService();
+    const contextAnalyzer = serviceFactory.getContextualRelevanceAnalyzer();
+    const timeEstimator = serviceFactory.getTimeEstimator();
+    
     // Create a stream response
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -122,7 +133,7 @@ export async function GET(request: Request) {
           
           // Setup streaming from OpenAI
           const stream = await client.chat.completions.create({
-            model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+            model: env.get('OPENAI_MODEL'),
             messages: [{ role: 'user', content: question }],
             stream: true,
           });
@@ -159,6 +170,7 @@ export async function GET(request: Request) {
           // Close the stream
           controller.close();
         } catch (error: any) {
+          console.error('Error in stream:', error);
           // Send error event
           controller.enqueue(encoder.encode(JSON.stringify({
             event: 'error',
@@ -180,6 +192,7 @@ export async function GET(request: Request) {
       }
     });
   } catch (error: any) {
+    console.error('Error in GET /api/ask:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

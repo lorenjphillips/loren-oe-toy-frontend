@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { env } from '../lib/env';
 
 /**
  * TypeScript interface for medical question classification response
@@ -150,22 +151,23 @@ export class MedicalQuestionClassifier {
    * Creates a new MedicalQuestionClassifier
    */
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+    try {
+      const apiKey = env.get('OPENAI_API_KEY');
+      
+      this.openai = new OpenAI({
+        apiKey: apiKey,
+      });
+      
+      this.defaultOptions = {
+        model: env.get('OPENAI_MODEL'),
+        temperature: 0.1,
+        maxTokens: 800,
+        includeRawResponse: false
+      };
+    } catch (error) {
+      console.error('Error initializing MedicalQuestionClassifier:', error);
+      throw new Error(`Failed to initialize MedicalQuestionClassifier: ${(error as Error).message}`);
     }
-    
-    this.openai = new OpenAI({
-      apiKey: apiKey,
-    });
-    
-    this.defaultOptions = {
-      model: process.env.OPENAI_MODEL || 'gpt-4o',
-      temperature: 0.1,
-      maxTokens: 800,
-      includeRawResponse: false
-    };
   }
 
   /**
@@ -296,11 +298,19 @@ Your response must be valid JSON with the exact structure shown above.
 // Export a singleton instance of the classifier
 export const medicalClassifier = new MedicalQuestionClassifier();
 
-// Export a simple function for direct use
+/**
+ * Factory function to create a classifier and classify a medical question
+ */
 export async function classifyMedicalQuestion(
   question: string,
   history: { role: string; content: string }[] = [],
   options: ClassificationOptions = {}
 ): Promise<MedicalClassification> {
-  return medicalClassifier.classifyQuestion(question, history, options);
+  try {
+    const classifier = new MedicalQuestionClassifier();
+    return await classifier.classifyQuestion(question, history, options);
+  } catch (error) {
+    console.error('Error classifying medical question:', error);
+    throw new Error(`Failed to classify medical question: ${(error as Error).message}`);
+  }
 } 

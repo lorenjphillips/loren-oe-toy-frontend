@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { MedicalClassification } from './classification';
 import { PharmaMappingResult, CompanyMatch } from './adMapping';
+import { env } from '../lib/env';
 
 /**
  * Confidence factors that influence the final ad confidence score
@@ -49,10 +50,10 @@ export interface ConfidenceScoringOptions {
  * Default confidence scoring options
  */
 const DEFAULT_CONFIDENCE_OPTIONS: ConfidenceScoringOptions = {
-  confidenceThreshold: 0.65,       // Default threshold for showing ads
-  semanticAnalysis: true,          // Use semantic analysis by default
-  model: 'text-embedding-3-small',  // Default embedding model
-  debug: false                      // Don't include debug info by default
+  confidenceThreshold: env.get('CONFIDENCE_THRESHOLD'),
+  semanticAnalysis: env.get('ENABLE_SEMANTIC_ANALYSIS'),
+  model: env.get('OPENAI_EMBEDDING_MODEL'),
+  debug: env.get('ENABLE_DEBUG_LOGGING')
 };
 
 /**
@@ -66,17 +67,18 @@ export class ConfidenceScorer {
    * Creates a new ConfidenceScorer
    */
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+    try {
+      const apiKey = env.get('OPENAI_API_KEY');
+      
+      this.openai = new OpenAI({
+        apiKey: apiKey,
+      });
+      
+      this.defaultOptions = { ...DEFAULT_CONFIDENCE_OPTIONS };
+    } catch (error) {
+      console.error('Error initializing ConfidenceScorer:', error);
+      throw new Error(`Failed to initialize ConfidenceScorer: ${(error as Error).message}`);
     }
-    
-    this.openai = new OpenAI({
-      apiKey: apiKey,
-    });
-    
-    this.defaultOptions = { ...DEFAULT_CONFIDENCE_OPTIONS };
   }
 
   /**
@@ -398,19 +400,20 @@ export class ConfidenceScorer {
 export const confidenceScorer = new ConfidenceScorer();
 
 /**
- * Main function to enhance mapping results with confidence scoring
- * 
- * @param mappingResult The pharma mapping result to enhance
- * @param questionText The original question text
- * @param options Confidence scoring options
- * @returns Enhanced mapping result with confidence scores
+ * Factory function to enhance mapping with confidence scores
  */
 export async function enhanceMappingConfidence(
   mappingResult: PharmaMappingResult,
   questionText: string,
   options: ConfidenceScoringOptions = {}
 ): Promise<EnhancedMappingResult> {
-  return confidenceScorer.enhanceWithConfidence(mappingResult, questionText, options);
+  try {
+    const scorer = new ConfidenceScorer();
+    return await scorer.enhanceWithConfidence(mappingResult, questionText, options);
+  } catch (error) {
+    console.error('Error enhancing mapping confidence:', error);
+    throw new Error(`Failed to enhance mapping confidence: ${(error as Error).message}`);
+  }
 }
 
 /**

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { MedicalClassification } from './classification';
+import { env } from '../lib/env';
 
 /**
  * Question intent types
@@ -99,31 +100,30 @@ export interface ContextualRelevanceOptions {
 }
 
 /**
- * Service for analyzing contextual relevance of medical questions
+ * Class for analyzing contextual relevance of medical questions
  */
 export class ContextualRelevanceAnalyzer {
   private openai: OpenAI;
-  private defaultOptions: ContextualRelevanceOptions;
+  private defaultModel: string;
+  private enableDebug: boolean;
 
   /**
    * Creates a new ContextualRelevanceAnalyzer
    */
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+    try {
+      const apiKey = env.get('OPENAI_API_KEY');
+      
+      this.openai = new OpenAI({
+        apiKey: apiKey,
+      });
+      
+      this.defaultModel = env.get('OPENAI_MODEL');
+      this.enableDebug = env.get('ENABLE_DEBUG_LOGGING');
+    } catch (error) {
+      console.error('Error initializing ContextualRelevanceAnalyzer:', error);
+      throw new Error(`Failed to initialize ContextualRelevanceAnalyzer: ${(error as Error).message}`);
     }
-    
-    this.openai = new OpenAI({
-      apiKey: apiKey,
-    });
-    
-    this.defaultOptions = {
-      model: process.env.OPENAI_MODEL || 'gpt-4o',
-      temperature: 0.1,
-      includeRawResponse: false
-    };
   }
 
   /**
@@ -139,7 +139,13 @@ export class ContextualRelevanceAnalyzer {
     classification?: MedicalClassification,
     options: ContextualRelevanceOptions = {}
   ): Promise<ContextualRelevanceResult> {
-    const mergedOptions = { ...this.defaultOptions, ...options };
+    // Use provided options or create a default object
+    const mergedOptions = { 
+      model: this.defaultModel,
+      temperature: 0.1,
+      includeRawResponse: this.enableDebug,
+      ...options 
+    };
     
     try {
       // Construct the prompt for OpenAI
@@ -213,25 +219,21 @@ Your response must be valid JSON with the exact structure shown above.
       }
 
       // Parse the JSON response
-      const responseData = JSON.parse(content);
-      
-      // Return the parsed response
-      return {
-        questionIntent: responseData.questionIntent,
-        clinicalContext: responseData.clinicalContext,
-        complexityLevel: responseData.complexityLevel,
-        specificity: responseData.specificity,
-        practicalityScore: responseData.practicalityScore,
-        urgencyScore: responseData.urgencyScore,
-        contentRelevanceScores: responseData.contentRelevanceScores,
-        estimatedResponseTime: responseData.estimatedResponseTime,
-        keyContextualFactors: responseData.keyContextualFactors,
-        targetSpecialties: responseData.targetSpecialties,
-        detectedPatientDemographics: responseData.detectedPatientDemographics
-      };
+      const contextualRelevance = JSON.parse(content) as ContextualRelevanceResult;
+
+      // Add debug information if requested
+      if (mergedOptions.includeRawResponse || this.enableDebug) {
+        (contextualRelevance as any)._debug = {
+          prompt,
+          rawResponse: content,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      return contextualRelevance;
     } catch (error) {
-      console.error('[ContextualRelevanceAnalyzer] Error analyzing question:', error);
-      throw error;
+      console.error('Error in contextual relevance analysis:', error);
+      throw new Error(`Contextual relevance analysis failed: ${(error as Error).message}`);
     }
   }
 
@@ -307,6 +309,22 @@ Your response must be valid JSON with the exact structure shown above.
 }
 
 /**
+ * Factory function to analyze contextual relevance of a medical question
+ */
+export async function analyzeContextualRelevance(
+  question: string,
+  classification: MedicalClassification
+): Promise<any> {
+  try {
+    const analyzer = new ContextualRelevanceAnalyzer();
+    return await analyzer.analyzeContextualRelevance(question, classification);
+  } catch (error) {
+    console.error('Error analyzing contextual relevance:', error);
+    throw new Error(`Failed to analyze contextual relevance: ${(error as Error).message}`);
+  }
+}
+
+/**
  * Convenience function to analyze contextual relevance
  * 
  * @param question The medical question to analyze
@@ -321,4 +339,72 @@ export async function analyzeQuestionContext(
 ): Promise<ContextualRelevanceResult> {
   const analyzer = new ContextualRelevanceAnalyzer();
   return analyzer.analyzeContextualRelevance(question, classification, options);
+}
+
+/**
+ * Analyze the contextual relevance of a medical question
+ * @param question Medical question text
+ * @param classification Medical classification of the question
+ * @returns Analysis of contextual relevance
+ */
+async analyzeContextualRelevance(
+  question: string,
+  classification: MedicalClassification
+): Promise<any> {
+  try {
+    // Construct the prompt for analysis
+    const prompt = `
+Analyze the contextual relevance of the following medical question:
+
+"${question}"
+
+Classification:
+- Primary Category: ${classification.primaryCategory.name} (confidence: ${classification.primaryCategory.confidence})
+- Subcategory: ${classification.subcategory.name} (confidence: ${classification.subcategory.confidence})
+- Keywords: ${classification.keywords.join(', ')}
+
+Provide a detailed analysis of:
+1. Clinical relevance score (0-1)
+2. Context specificity score (0-1)
+3. Medical demographics relevance
+4. Estimated time (in seconds) to research and answer
+5. Best information sources for answering
+6. Related medical concepts
+
+Format your response as a JSON object with these fields.
+`;
+
+    // Call the OpenAI API
+    const chatCompletion = await this.openai.chat.completions.create({
+      model: this.defaultModel,
+      temperature: 0.1,
+      messages: [
+        { role: 'system', content: prompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    // Extract the content from the response
+    const content = chatCompletion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No content in OpenAI response');
+    }
+
+    // Parse the JSON response
+    const analysisResult = JSON.parse(content);
+
+    // Add debug information if needed
+    if (this.enableDebug) {
+      analysisResult._debug = {
+        question,
+        classification,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    return analysisResult;
+  } catch (error) {
+    console.error('Error analyzing contextual relevance:', error);
+    throw new Error(`Failed to analyze contextual relevance: ${(error as Error).message}`);
+  }
 } 
