@@ -8,7 +8,9 @@ import {
   Chip, 
   Fade, 
   LinearProgress,
-  useTheme
+  useTheme,
+  Zoom,
+  Grow
 } from '@mui/material';
 import { styled } from '@mui/system';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,6 +23,18 @@ import { enhanceMappingConfidence, EnhancedMappingResult } from '../services/con
 import { getAdContentFromMapping } from '../services/adContentService';
 import { AdContent, AdContentResponse } from '../models/adTypes';
 
+// Import transition utilities
+import { 
+  pulse, 
+  fadeIn, 
+  fadeInUp,
+  getStaggeredStyles,
+  defaultTransitionSettings, 
+  TransitionSettings,
+  getTransitionString,
+  getOptimizedStyles
+} from '../styles/transitions';
+
 // Define props interface for SmartAdDisplay
 interface SmartAdDisplayProps {
   question: string;
@@ -31,17 +45,27 @@ interface SmartAdDisplayProps {
     categoryId: string,
     viewTimeMs: number
   }) => void;
+  transitionSettings?: Partial<TransitionSettings>;
 }
 
-// Styled components
+// Styled components with enhanced transitions
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(3),
   borderRadius: theme.shape.borderRadius,
   border: '1px solid #e0e0e0',
-  transition: 'all 0.3s ease',
+  transition: getTransitionString(['transform', 'box-shadow', 'opacity']),
   position: 'relative',
   overflow: 'hidden',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: theme.shadows[4],
+  },
+  ...getOptimizedStyles(['transform', 'opacity']),
+}));
+
+const PulseContainer = styled(Box)(({ theme }) => ({
+  animation: `${pulse} 1.5s infinite`,
 }));
 
 const SponsoredBadge = styled(Box)(({ theme }) => ({
@@ -54,6 +78,13 @@ const SponsoredBadge = styled(Box)(({ theme }) => ({
   fontSize: '0.7rem',
   color: theme.palette.text.secondary,
   zIndex: 1,
+  animation: `${fadeIn} 0.8s ${defaultTransitionSettings.easingIn} forwards`,
+}));
+
+const AnimatedContent = styled(Box)<{ delay?: number }>(({ theme, delay = 0 }) => ({
+  animation: `${fadeInUp} 0.7s ${defaultTransitionSettings.easingInOut} forwards`,
+  animationDelay: `${delay}ms`,
+  opacity: 0,
 }));
 
 const LoadingOverlay = styled(Box)(({ theme }) => ({
@@ -67,6 +98,7 @@ const LoadingOverlay = styled(Box)(({ theme }) => ({
   justifyContent: 'center',
   alignItems: 'center',
   zIndex: 2,
+  animation: `${fadeIn} 0.3s ${defaultTransitionSettings.easingIn} forwards`,
 }));
 
 /**
@@ -79,12 +111,20 @@ const LoadingOverlay = styled(Box)(({ theme }) => ({
  * - Displays relevant ad content during loading
  * - Tracks view time and impressions
  * - Handles transitions between states
+ * - Provides professional animations for a polished user experience
  */
 export default function SmartAdDisplay({ 
   question, 
   isLoading,
-  onAdImpression 
+  onAdImpression,
+  transitionSettings: customSettings = {} 
 }: SmartAdDisplayProps) {
+  // Merge custom transition settings with defaults
+  const settings: TransitionSettings = {
+    ...defaultTransitionSettings,
+    ...customSettings
+  };
+
   // State for classification and ad content
   const [classification, setClassification] = useState<MedicalClassification | null>(null);
   const [mappingResult, setMappingResult] = useState<EnhancedMappingResult | null>(null);
@@ -93,6 +133,7 @@ export default function SmartAdDisplay({
   const [impressionId, setImpressionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewStartTime, setViewStartTime] = useState<number | null>(null);
+  const [transitionIn, setTransitionIn] = useState<boolean>(false);
   
   // Reference to track component mounted state
   const isMounted = useRef(true);
@@ -125,22 +166,33 @@ export default function SmartAdDisplay({
       if (!isMounted.current) return;
       
       if (adResponse.content.length > 0) {
-        setAdContent(adResponse.content[0]);
+        // Trigger transition before setting content
+        setTransitionIn(false);
         
-        // Create impression ID for tracking
-        const newImpressionId = uuidv4();
-        setImpressionId(newImpressionId);
+        // Use a slight delay to ensure transition out completes
+        setTimeout(() => {
+          if (!isMounted.current) return;
+          
+          setAdContent(adResponse.content[0]);
         
-        // Track impression start time
-        setViewStartTime(Date.now());
+          // Create impression ID for tracking
+          const newImpressionId = uuidv4();
+          setImpressionId(newImpressionId);
         
-        // Call server to record impression
-        await axios.post('/api/ads/impression', {
-          adContentId: adResponse.content[0].id,
-          questionText: questionText,
-          confidenceScore: enhancedMapping.overallConfidence,
-          impressionId: newImpressionId
-        });
+          // Track impression start time
+          setViewStartTime(Date.now());
+          
+          // Trigger transition in
+          setTransitionIn(true);
+        
+          // Call server to record impression
+          axios.post('/api/ads/impression', {
+            adContentId: adResponse.content[0].id,
+            questionText: questionText,
+            confidenceScore: enhancedMapping.overallConfidence,
+            impressionId: newImpressionId
+          });
+        }, settings.durationShort);
       } else {
         // No suitable ads found
         setAdContent(null);
@@ -183,6 +235,14 @@ export default function SmartAdDisplay({
     }
   };
 
+  // Effect to trigger entrance animation on mount
+  useEffect(() => {
+    setTransitionIn(true);
+    return () => {
+      setTransitionIn(false);
+    };
+  }, []);
+
   // Effect to clean up on unmount
   useEffect(() => {
     return () => {
@@ -212,51 +272,64 @@ export default function SmartAdDisplay({
   // Don't render anything if not loading and no ad content
   if (!isLoading && !adContent) return null;
 
-  // If we don't have ad content yet but are loading, show placeholder
+  // If we don't have ad content yet but are loading, show placeholder with transition
   if (!adContent) {
     return (
-      <StyledPaper elevation={2}>
-        <SponsoredBadge>Sponsored</SponsoredBadge>
-        <Box sx={{ width: '100%' }}>
-          <LinearProgress 
-            sx={{ 
-              height: 2, 
-              mb: 2, 
-              borderRadius: 1,
-              backgroundColor: theme.palette.grey[100]
-            }} 
-          />
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Box 
+      <Fade in={true} timeout={settings.fadeInDuration}>
+        <StyledPaper elevation={2}>
+          <SponsoredBadge>Sponsored</SponsoredBadge>
+          <Box sx={{ width: '100%' }}>
+            <LinearProgress 
               sx={{ 
-                width: 40, 
-                height: 40, 
-                backgroundColor: theme.palette.grey[200], 
-                borderRadius: '50%',
-                mr: 1 
+                height: 2, 
+                mb: 2, 
+                borderRadius: 1,
+                backgroundColor: theme.palette.grey[100],
+                '& .MuiLinearProgress-bar': {
+                  transition: 'transform 0.8s ease-in-out'
+                }
               }} 
             />
-            <Box>
-              <Typography variant="body1" sx={{ bgcolor: theme.palette.grey[200], width: 150, height: 20, borderRadius: 1 }}></Typography>
-              <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: 100, height: 16, mt: 0.5, borderRadius: 1 }}></Typography>
-            </Box>
+            <AnimatedContent delay={settings.enableStaggered ? 0 : 0}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Box 
+                  sx={{ 
+                    width: 40, 
+                    height: 40, 
+                    backgroundColor: theme.palette.grey[200], 
+                    borderRadius: '50%',
+                    mr: 1 
+                  }} 
+                />
+                <Box>
+                  <Typography variant="body1" sx={{ bgcolor: theme.palette.grey[200], width: 150, height: 20, borderRadius: 1 }}></Typography>
+                  <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: 100, height: 16, mt: 0.5, borderRadius: 1 }}></Typography>
+                </Box>
+              </Box>
+            </AnimatedContent>
+            
+            <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay : 0}>
+              <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: '100%', height: 16, mt: 1, borderRadius: 1 }}></Typography>
+              <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: '90%', height: 16, mt: 0.5, borderRadius: 1 }}></Typography>
+              <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: '95%', height: 16, mt: 0.5, borderRadius: 1 }}></Typography>
+            </AnimatedContent>
+            
+            <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 2 : 0}>
+              <Button 
+                variant="contained" 
+                disabled
+                sx={{ 
+                  mt: 2, 
+                  opacity: 0.5,
+                  minWidth: 120
+                }}
+              >
+                Learn More
+              </Button>
+            </AnimatedContent>
           </Box>
-          <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: '100%', height: 16, mt: 1, borderRadius: 1 }}></Typography>
-          <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: '90%', height: 16, mt: 0.5, borderRadius: 1 }}></Typography>
-          <Typography variant="body2" sx={{ bgcolor: theme.palette.grey[100], width: '95%', height: 16, mt: 0.5, borderRadius: 1 }}></Typography>
-          <Button 
-            variant="contained" 
-            disabled
-            sx={{ 
-              mt: 2, 
-              opacity: 0.5,
-              minWidth: 120
-            }}
-          >
-            Learn More
-          </Button>
-        </Box>
-      </StyledPaper>
+        </StyledPaper>
+      </Fade>
     );
   }
 
@@ -270,7 +343,12 @@ export default function SmartAdDisplay({
   const borderColor = displaySettings.borderColor || accentColor;
 
   return (
-    <Fade in={true} timeout={500}>
+    <Fade 
+      in={transitionIn && settings.enableFadeTransitions} 
+      timeout={settings.fadeInDuration}
+      mountOnEnter
+      unmountOnExit
+    >
       <StyledPaper 
         elevation={2} 
         sx={{ 
@@ -287,112 +365,146 @@ export default function SmartAdDisplay({
         
         {isClassifying && (
           <LoadingOverlay>
-            <CircularProgress size={24} />
+            {settings.enablePulse ? (
+              <PulseContainer>
+                <CircularProgress size={24} />
+              </PulseContainer>
+            ) : (
+              <CircularProgress size={24} />
+            )}
           </LoadingOverlay>
         )}
 
         <Box>
           {/* Company logo and branding */}
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-            {adContent.company.logoUrl && (
-              <Box 
-                component="img"
-                src={adContent.company.logoUrl}
-                alt={adContent.company.name}
-                sx={{ 
-                  height: 40, 
-                  mr: 1.5,
-                  borderRadius: '4px'
-                }}
-              />
-            )}
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: textColor }}>
-                {adContent.creative.headline}
-              </Typography>
-              {adContent.creative.subheadline && (
-                <Typography variant="body2" sx={{ color: textColor }}>
-                  {adContent.creative.subheadline}
-                </Typography>
+          <AnimatedContent delay={settings.enableStaggered ? 0 : 0}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+              {adContent.company.logoUrl && (
+                <Zoom in={true} style={{ transitionDelay: settings.enableStaggered ? '100ms' : '0ms' }}>
+                  <Box 
+                    component="img"
+                    src={adContent.company.logoUrl}
+                    alt={adContent.company.name}
+                    sx={{ 
+                      height: 40, 
+                      mr: 1.5,
+                      borderRadius: '4px'
+                    }}
+                  />
+                </Zoom>
               )}
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: textColor }}>
+                  {adContent.creative.headline}
+                </Typography>
+                {adContent.creative.subheadline && (
+                  <Typography variant="body2" sx={{ color: textColor }}>
+                    {adContent.creative.subheadline}
+                  </Typography>
+                )}
+              </Box>
             </Box>
-          </Box>
+          </AnimatedContent>
 
           {/* Main content */}
-          <Typography variant="body2" sx={{ my: 1.5, color: textColor }}>
-            {adContent.creative.bodyText}
-          </Typography>
+          <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay : 0}>
+            <Typography variant="body2" sx={{ my: 1.5, color: textColor }}>
+              {adContent.creative.bodyText}
+            </Typography>
+          </AnimatedContent>
           
           {/* Ad image if available */}
           {adContent.creative.imageUrl && (
-            <Box 
-              component="img"
-              src={adContent.creative.imageUrl}
-              alt={adContent.creative.headline}
-              sx={{ 
-                width: '100%', 
-                maxHeight: 200, 
-                objectFit: 'contain',
-                my: 1.5,
-                borderRadius: 1 
-              }}
-            />
+            <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 1.5 : 0}>
+              <Box 
+                component="img"
+                src={adContent.creative.imageUrl}
+                alt={adContent.creative.headline}
+                sx={{ 
+                  width: '100%', 
+                  maxHeight: 200, 
+                  objectFit: 'contain',
+                  my: 1.5,
+                  borderRadius: 1 
+                }}
+              />
+            </AnimatedContent>
           )}
           
           {/* Treatment categories/tags */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-            <Chip 
-              label={adContent.treatmentCategory.name} 
-              size="small" 
-              sx={{ 
-                backgroundColor: `${accentColor}22`,  // Using hex opacity
-                color: accentColor,
-                fontWeight: 500
-              }} 
-            />
-            {mappingResult?.keywordsUsed.slice(0, 2).map((keyword, index) => (
-              <Chip 
-                key={index} 
-                label={keyword} 
-                size="small"
-                sx={{ 
-                  backgroundColor: theme.palette.grey[100],
-                  color: theme.palette.text.secondary
-                }} 
-              />
-            ))}
-          </Box>
+          <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 2 : 0}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
+              <Grow in={true} style={{ transformOrigin: '0 0 0', transitionDelay: settings.enableStaggered ? '300ms' : '0ms' }}>
+                <Chip 
+                  label={adContent.treatmentCategory.name} 
+                  size="small" 
+                  sx={{ 
+                    backgroundColor: `${accentColor}22`,  // Using hex opacity
+                    color: accentColor,
+                    fontWeight: 500
+                  }} 
+                />
+              </Grow>
+              {mappingResult?.keywordsUsed.slice(0, 2).map((keyword, index) => (
+                <Grow 
+                  key={index} 
+                  in={true} 
+                  style={{ 
+                    transformOrigin: '0 0 0', 
+                    transitionDelay: settings.enableStaggered ? `${350 + index * 50}ms` : '0ms'
+                  }}
+                >
+                  <Chip 
+                    label={keyword} 
+                    size="small"
+                    sx={{ 
+                      backgroundColor: theme.palette.grey[100],
+                      color: theme.palette.text.secondary
+                    }} 
+                  />
+                </Grow>
+              ))}
+            </Box>
+          </AnimatedContent>
           
           {/* Call to action */}
-          <Button 
-            variant="contained" 
-            fullWidth 
-            onClick={() => {
-              // Track the click
-              axios.post('/api/ads/click', {
-                adContentId: adContent.id,
-                impressionId
-              }).catch(console.error);
-              
-              // Open the company website or target URL
-              window.open(adContent.company.website || '#', '_blank');
-            }}
-            sx={{ 
-              mt: 1,
-              backgroundColor: accentColor,
-              '&:hover': {
-                backgroundColor: theme.palette.darken(accentColor, 0.1)
-              }
-            }}
-          >
-            {adContent.creative.callToAction}
-          </Button>
+          <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 2.5 : 0}>
+            <Button 
+              variant="contained" 
+              fullWidth 
+              onClick={() => {
+                // Track the click
+                axios.post('/api/ads/click', {
+                  adContentId: adContent.id,
+                  impressionId
+                }).catch(console.error);
+                
+                // Open the company website or target URL
+                window.open(adContent.company.website || '#', '_blank');
+              }}
+              sx={{ 
+                mt: 1,
+                backgroundColor: accentColor,
+                transition: getTransitionString(['background-color', 'transform']),
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === 'light' 
+                    ? theme.palette.darken(accentColor, 0.1)
+                    : theme.palette.lighten(accentColor, 0.1),
+                  transform: 'translateY(-2px)'
+                }
+              }}
+            >
+              {adContent.creative.callToAction}
+            </Button>
+          </AnimatedContent>
           
           {/* Legal disclaimer in small text */}
           {adContent.company.legalDisclaimer && (
-            <Typography variant="caption" display="block" sx={{ mt: 1, color: theme.palette.text.secondary, fontSize: '0.6rem' }}>
-              {adContent.company.legalDisclaimer}
-            </Typography>
+            <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 3 : 0}>
+              <Typography variant="caption" display="block" sx={{ mt: 1, color: theme.palette.text.secondary, fontSize: '0.6rem' }}>
+                {adContent.company.legalDisclaimer}
+              </Typography>
+            </AnimatedContent>
           )}
         </Box>
       </StyledPaper>

@@ -6,6 +6,7 @@ import { Container, TextField, Button, Typography, Paper, List, Box, AppBar, Too
 import { styled } from '@mui/system';
 import { v4 as uuidv4 } from 'uuid';
 import SmartAdDisplay from './components/SmartAdDisplay';
+import { TransitionSettings, defaultTransitionSettings } from './styles/transitions';
 
 interface HistoryItem {
   role: string;
@@ -41,6 +42,15 @@ export default function Home() {
     return uuidv4();
   });
   const [questionId, setQuestionId] = useState<string>('');
+  
+  // User's preference for transition settings - could be loaded from profile/cookies
+  const [transitionSettings, setTransitionSettings] = useState<Partial<TransitionSettings>>({
+    // Default to clinical professional settings
+    durationBase: 400, // Slightly faster than default
+    enablePulse: true,
+    enableStaggered: true,
+    staggerDelay: 80, // Slightly quicker staggering
+  });
 
   const scrollToBottom = () => {
     window.scrollTo({
@@ -84,6 +94,14 @@ export default function Home() {
     console.log('Ad impression:', adInfo);
     // Here you could send this data to analytics or your backend
   };
+  
+  // Handle transition settings change - could be triggered by user preferences
+  const updateTransitionSettings = (newSettings: Partial<TransitionSettings>) => {
+    setTransitionSettings(prev => ({
+      ...prev,
+      ...newSettings
+    }));
+  };
 
   useEffect(() => {
     if (!loading) {
@@ -111,6 +129,7 @@ export default function Home() {
             question={question}
             isLoading={loading}
             onAdImpression={handleAdImpression}
+            transitionSettings={transitionSettings}
           />
         )}
 
