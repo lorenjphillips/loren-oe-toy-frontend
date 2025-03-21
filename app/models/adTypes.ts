@@ -1,8 +1,145 @@
 /**
- * TypeScript interfaces for ad content, companies, and related models
+ * Ad Type definitions
+ * 
+ * Contains type definitions for ad content and related structures
+ * used throughout the OpenEvidence platform.
  */
 
-import { AdType } from '../types/ad';
+/**
+ * Enum for different types of ads
+ */
+export enum AdType {
+  STANDARD = 'standard',
+  ENHANCED = 'enhanced',
+  INTERACTIVE = 'interactive',
+  MICROSIMULATION = 'microsimulation',
+  KNOWLEDGE_GRAPH = 'knowledge_graph',
+  VIDEO = 'video'
+}
+
+/**
+ * Interface for treatment categories
+ */
+export interface TreatmentCategory {
+  id: string;
+  name: string;
+  medicalCategory: string;
+  relevantSpecialties: string[];
+  description?: string;
+}
+
+/**
+ * Interface for interactive content options
+ */
+export interface InteractiveContent {
+  type: string;
+  data: any;
+  interactionOptions: string[];
+}
+
+/**
+ * Interface for the core ad content
+ */
+export interface AdContent {
+  id: string;
+  campaignId: string;
+  adType: AdType;
+  title: string;
+  description: string;
+  treatmentCategory: TreatmentCategory;
+  targetConditions: string[];
+  brandName?: string;
+  genericName?: string;
+  manufacturer?: string;
+  imageUrl?: string;
+  templateId?: string;
+  callToAction?: {
+    text: string;
+    url: string;
+    trackingId: string;
+  };
+  keywords: string[];
+  entityMappings: {
+    entity: string;
+    type: string;
+    confidence: number;
+  }[];
+  interactiveContent?: InteractiveContent;
+  videoUrl?: string;
+  microsimulationConfig?: {
+    modelId: string;
+    parameters: Record<string, any>;
+  };
+  knowledgeGraphConfig?: {
+    topics: string[];
+    depth: number;
+  };
+  createdAt: number;
+  updatedAt: number;
+  activeTo: number;
+  isActive: boolean;
+  regulatoryApproved: boolean;
+  disclaimers: string[];
+  references: {
+    title: string;
+    url: string;
+  }[];
+}
+
+/**
+ * Interface for ad impression data
+ */
+export interface AdImpression {
+  id: string;
+  adId: string;
+  adContent: AdContent;
+  placementId: string;
+  sessionId: string;
+  questionId?: string;
+  startTime: number;
+  endTime?: number;
+  viewable: boolean;
+  viewableDuration: number;
+  interacted: boolean;
+  completed: boolean;
+}
+
+/**
+ * Interface for ad placement configuration
+ */
+export interface AdPlacement {
+  id: string;
+  name: string;
+  location: 'sidebar' | 'in_content' | 'banner' | 'post_question';
+  size: {
+    width: number;
+    height: number;
+  };
+  allowedAdTypes: AdType[];
+  contextual: boolean;
+  maxAdsPerPage: number;
+  priority: number;
+}
+
+/**
+ * Interface for ad campaign details
+ */
+export interface AdCampaign {
+  id: string;
+  name: string;
+  advertiserId: string;
+  treatmentCategories: TreatmentCategory[];
+  startDate: number;
+  endDate: number;
+  budget: number;
+  targetSpecialties: string[];
+  targetGeographies?: string[];
+  targetIntents?: string[];
+  isActive: boolean;
+  ads: AdContent[];
+  createdAt: number;
+  updatedAt: number;
+}
 
 /**
  * Display settings for ad content
@@ -19,19 +156,6 @@ export interface AdDisplaySettings {
   logoPosition?: 'top' | 'bottom' | 'left' | 'right'; // Logo position
   animationEnabled?: boolean;    // Whether to enable animations
   contentLayout?: 'standard' | 'compact' | 'expanded'; // Layout style
-}
-
-/**
- * Treatment category information
- */
-export interface TreatmentCategory {
-  id: string;                    // Treatment area ID (e.g., "cardiology_hypertension")
-  name: string;                  // Display name (e.g., "Hypertension")
-  medicalCategory: string;       // Medical category ID (e.g., "cardiology")
-  medicalCategoryName: string;   // Medical category name (e.g., "Cardiology")
-  keywords: string[];            // Related keywords for this treatment
-  description?: string;          // Brief description of this treatment area
-  preferredAdTypes?: AdType[];   // Preferred ad formats for this treatment
 }
 
 /**
@@ -80,21 +204,6 @@ export interface AdMetadata {
     timeWindowHours: number;     // Time window in hours
   };
   abTestGroup?: string;          // A/B test group identifier
-}
-
-/**
- * Complete ad content model
- */
-export interface AdContent {
-  id: string;                    // Unique identifier
-  name: string;                  // Internal name for this content
-  company: AdCompany;            // Company information
-  treatmentCategory: TreatmentCategory; // Treatment category
-  type: AdType;                  // Ad format type
-  creative: AdCreative;          // Creative content
-  metadata: AdMetadata;          // Tracking and analytics metadata
-  isActive: boolean;             // Whether this ad is currently active
-  alternateAds?: string[];       // IDs of alternate ad content to try if this one is unavailable
 }
 
 /**

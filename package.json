@@ -1,5 +1,5 @@
 {
-  "name": "oe-ad-coding-challenge",
+  "name": "openevidence-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,28 +9,27 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@emotion/react": "^11.13.0",
-    "@emotion/styled": "^11.13.0",
-    "@mui/icons-material": "^5.16.7",
-    "@mui/material": "^5.16.7",
-    "@types/d3": "^7.4.3",
-    "axios": "^1.7.4",
-    "d3": "^7.9.0",
-    "date-fns": "^3.2.0",
-    "next": "14.2.5",
-    "openai": "^4.89.0",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.14.18",
+    "@mui/material": "^5.14.18",
+    "d3": "^7.8.5",
+    "idb": "^7.1.1",
+    "next": "14.0.3",
+    "openai": "^4.20.0",
     "react": "^18",
     "react-dom": "^18",
+    "react-transition-group": "^4.4.5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.17.24",
+    "@types/d3": "^7.4.3",
+    "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/uuid": "^9.0.8",
+    "@types/uuid": "^9.0.7",
     "eslint": "^8",
-    "eslint-config-next": "14.2.5",
+    "eslint-config-next": "14.0.3",
     "typescript": "^5"
   }
 }
