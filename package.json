@@ -1,7 +1,8 @@
 {
-  "name": "openevidence-frontend",
-  "version": "0.1.0",
-  "private": true,
+  "name": "pharma-ad-analytics",
+  "version": "1.0.0",
+  "description": "Comparative effectiveness framework for pharmaceutical advertising",
+  "main": "index.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,29 +10,24 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@emotion/react": "^11.11.1",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.14.18",
-    "@mui/material": "^5.14.18",
-    "@types/recharts": "^1.8.29",
-    "d3": "^7.8.5",
-    "idb": "^7.1.1",
-    "next": "14.0.3",
-    "openai": "^4.20.0",
-    "react": "^18",
-    "react-dom": "^18",
-    "react-transition-group": "^4.4.5",
-    "recharts": "^2.15.1",
-    "uuid": "^9.0.1"
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "jstat": "^1.9.6",
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.10.0",
+    "typescript": "^5.0.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@types/d3": "^7.4.3",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "@types/uuid": "^9.0.7",
-    "eslint": "^8",
-    "eslint-config-next": "14.0.3",
-    "typescript": "^5"
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.3.0"
   }
 }
