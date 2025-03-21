@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Container, TextField, Button, Typography, Paper, List, CircularProgress, Box, AppBar, Toolbar } from '@mui/material';
+import { Container, TextField, Button, Typography, Paper, List, Box, AppBar, Toolbar } from '@mui/material';
 import { styled } from '@mui/system';
-import AdDisplay from '../components/AdDisplay';
 import { v4 as uuidv4 } from 'uuid';
+import SmartAdDisplay from './components/SmartAdDisplay';
 
 interface HistoryItem {
   role: string;
@@ -80,6 +80,11 @@ export default function Home() {
     scrollToBottom();
   };
 
+  const handleAdImpression = (adInfo: { adId: string, companyId: string, categoryId: string, viewTimeMs: number }) => {
+    console.log('Ad impression:', adInfo);
+    // Here you could send this data to analytics or your backend
+  };
+
   useEffect(() => {
     if (!loading) {
       scrollToBottom();
@@ -100,13 +105,12 @@ export default function Home() {
       </FixedAppBar>
 
       <Container maxWidth="md" style={{ marginTop: '120px', fontFamily: 'Roboto, sans-serif', marginBottom: '250px' }}>
-        {/* Show the ad at the top of the conversation */}
-        {history.length > 0 && question.trim() !== '' && (
-          <AdDisplay 
-            question={question} 
-            history={history}
-            userId={userId}
-            questionId={questionId}
+        {/* Display the SmartAdDisplay component when loading */}
+        {loading && (
+          <SmartAdDisplay 
+            question={question}
+            isLoading={loading}
+            onAdImpression={handleAdImpression}
           />
         )}
 
@@ -137,11 +141,6 @@ export default function Home() {
             </StyledButton>
           </form>
         </StyledPaper>
-        {loading && (
-          <Box display="flex" justifyContent="center" alignItems="center" mt={2}>
-            <CircularProgress />
-          </Box>
-        )}
       </Container>
     </>
   );
