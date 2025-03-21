@@ -1,16 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { initializeAdRepository } from '../../../data/adRepository';
-import { classifyQuestion } from '../../../services/classifierService';
-import { deliverAd } from '../../../services/adService';
-import { trackImpression } from '../../../services/analyticsService';
+import { classifyMedicalQuestion } from '../../services/classification';
+import { mapQuestionToCompanies } from '../../services/adMapping';
+import { enhanceMappingConfidence, shouldShowAd } from '../../services/confidenceScoring';
+import { 
+  getAdContentFromMapping, 
+  getAdContentForTreatmentCategory,
+  trackImpression 
+} from '../../services/adContentService';
+import { createApiResponse, handleApiError, validateRequiredFields } from '../../lib/api-utils';
 
 // Initialize the ad repository on server start
 let repositoryInitialized = false;
 
 /**
  * API route to deliver a targeted ad based on a medical question
+ * POST /api/ads
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Initialize repository if not done already
     if (!repositoryInitialized) {
@@ -19,48 +26,89 @@ export async function POST(request: Request) {
     }
 
     // Parse the request body
-    const { question, history, userId, questionId } = await request.json();
-
-    if (!question) {
-      return NextResponse.json(
-        { error: 'Question is required' },
-        { status: 400 }
-      );
+    const body = await request.json();
+    
+    // Validate required fields
+    const missingField = validateRequiredFields(body, ['question', 'userId']);
+    if (missingField) {
+      return createApiResponse(undefined, {
+        status: 400,
+        message: missingField
+      });
     }
 
-    // Classify the question
-    const classification = await classifyQuestion(question, history);
+    const { question, classification, userId, questionId, history } = body;
 
-    // Get a relevant ad based on the classification
-    const adResponse = await deliverAd(classification);
-
-    // If we found an ad, track the impression
-    if (adResponse.ad) {
-      await trackImpression(
-        adResponse.ad.id,
-        userId,
-        questionId,
-        {
-          matchConfidence: adResponse.matchConfidence,
-          matchedCategories: adResponse.matchedCategories,
-          keywords: classification.keywords
-        }
-      );
+    // If classification wasn't provided, classify the question
+    const questionClassification = classification || await classifyMedicalQuestion(question);
+    
+    // Map the question to pharmaceutical companies
+    const mappingResult = mapQuestionToCompanies(questionClassification);
+    
+    // Enhance mapping with confidence scoring
+    const enhancedMapping = await enhanceMappingConfidence(mappingResult, question);
+    
+    // Determine if we should show an ad based on confidence
+    const showAd = shouldShowAd(enhancedMapping);
+    
+    // Get relevant ad content if confidence is high enough
+    let adResponse;
+    let trackingId;
+    
+    if (showAd) {
+      adResponse = await getAdContentFromMapping(enhancedMapping);
+      
+      // Track impression if ad content was found
+      if (adResponse.content.length > 0) {
+        const adContent = adResponse.content[0];
+        trackingId = trackImpression(
+          adContent.id,
+          questionId || `q_${Date.now()}`,
+          userId,
+          enhancedMapping.overallConfidence
+        );
+      }
+    } else {
+      // Try to get fallback ad content for the treatment category
+      const primaryCategory = questionClassification.primaryCategory.id;
+      adResponse = await getAdContentForTreatmentCategory(primaryCategory);
+      
+      // Track impression with lower confidence
+      if (adResponse.content.length > 0) {
+        const adContent = adResponse.content[0];
+        trackingId = trackImpression(
+          adContent.id,
+          questionId || `q_${Date.now()}`,
+          userId,
+          0.5 // Lower confidence for fallback ads
+        );
+      }
     }
 
-    return NextResponse.json({
-      ad: adResponse.ad,
-      matchConfidence: adResponse.matchConfidence,
-      matchedCategories: adResponse.matchedCategories,
-      categories: classification.categories,
-      keywords: classification.keywords
+    // Return the ad content, mapping details, and tracking info
+    return createApiResponse({
+      ads: adResponse.content,
+      totalAdsFound: adResponse.totalFound,
+      confidence: enhancedMapping.overallConfidence,
+      showAd,
+      mappingDetails: {
+        primaryCategory: questionClassification.primaryCategory,
+        subcategory: questionClassification.subcategory,
+        keywords: questionClassification.keywords,
+        matches: enhancedMapping.matches.map(match => ({
+          companyId: match.company.id,
+          companyName: match.company.name,
+          confidence: match.confidenceScore,
+          treatmentArea: match.treatmentArea
+        }))
+      },
+      tracking: {
+        impressionId: trackingId,
+        timestamp: new Date().toISOString()
+      }
     });
-  } catch (error: any) {
-    console.error('Error in ad delivery API:', error);
-    return NextResponse.json(
-      { error: error.message || 'An error occurred' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -68,7 +116,7 @@ export async function POST(request: Request) {
  * API route to handle OPTIONS requests (for CORS)
  */
 export async function OPTIONS() {
-  return new NextResponse(null, {
+  return new Response(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
