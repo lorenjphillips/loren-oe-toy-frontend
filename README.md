@@ -1,8 +1,24 @@
-# Pharmaceutical Ad Performance Analytics Framework
+# OpenEvidence Pharmaceutical Ad Platform
 
-A comprehensive framework for measuring and comparing the effectiveness of pharmaceutical advertising across different dimensions.
+A comprehensive platform for delivering tailored pharmaceutical advertising to healthcare professionals with integrated analytics and decision support.
+
+## Project Status
+
+### Completed Phases
+- **Phase 1: Core Ad Delivery** - Base platform for targeted ad delivery to healthcare professionals
+- **Phase 2: Analytics Framework** - Comprehensive framework for measuring advertising effectiveness
+- **Phase 3: Knowledge Integration** - Knowledge graph and microsimulation integration
+
+### Current Phase
+- **Phase 4: Innovation Layer** - Implementing lightweight versions of clinical decision support and ethical AI guardrails
 
 ## Features
+
+### Ad Delivery System
+- Targeted ad delivery based on medical specialty and interests
+- Company matching with confidence scoring
+- Impression tracking and frequency capping
+- Treatment category mapping
 
 ### Comparison Service
 - Calculates relative performance metrics between categories
@@ -31,11 +47,42 @@ A comprehensive framework for measuring and comparing the effectiveness of pharm
    - Anonymized competitive analysis
    - Error bars for benchmark uncertainty
 
-### Segmentation System
-- Filter by time period, category, and format
-- Create and analyze cohorts
-- Support custom segmentation criteria
-- Save and manage comparison views
+### Knowledge Integration
+- Interactive knowledge graphs for treatment relationships
+- Microsimulation for patient outcome visualization
+- Scenario-based content delivery
+
+### Innovation Layer (In Progress)
+- Clinical decision support integration
+- Ethical AI guardrails for content delivery
+- Enhanced relevance scoring
+
+## Future Work
+
+### Enhanced Clinical Decision Support
+- Integration with clinical practice guidelines
+- Personalized recommendation engine
+- Treatment comparison tools
+- Patient case-based learning modules
+
+### Voice-Activated Engagement
+- Natural language interaction with platform
+- Voice commands for content navigation
+- Hands-free operation for clinical settings
+- Voice-triggered microsimulation controls
+
+### Extended Ethical AI Guardrails
+- Content bias detection and mitigation
+- Transparency reports for algorithm decisions
+- User-controlled filtering preferences
+- Educational content balance monitoring
+
+### Additional Planned Enhancements
+- Multi-modal content delivery optimization
+- Longitudinal engagement tracking
+- Cross-platform synchronization
+- Collaborative filtering recommendation system
+- Integration with electronic health record systems
 
 ## Getting Started
 
