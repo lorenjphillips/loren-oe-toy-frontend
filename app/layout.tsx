@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import './globals.css';
 import { Roboto, Open_Sans } from 'next/font/google';
+import { AdProvider } from './contexts/AdContext';
 
 const roboto = Roboto({ weight: ['400', '500', '700'], subsets: ['latin'] });
 const openSans = Open_Sans({ weight: ['400', '600'], subsets: ['latin'] });
@@ -17,7 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${roboto.className} ${openSans.className}`}>{children}</body>
+      <body className={`${roboto.className} ${openSans.className}`}>
+        <AdProvider>
+          {children}
+        </AdProvider>
+      </body>
     </html>
   );
 }
