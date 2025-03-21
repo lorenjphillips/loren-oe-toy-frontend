@@ -42,13 +42,31 @@ export interface InteractiveContent {
  */
 export interface AdContent {
   id: string;
-  campaignId: string;
-  adType: AdType;
   title: string;
   description: string;
-  treatmentCategory: TreatmentCategory;
+  campaignId: string;
+  adType: AdType;
+  type?: string;
+  company: {
+    id: string;
+    name: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    defaultDisplaySettings?: Record<string, any>;
+  };
+  treatmentCategory: {
+    id: string;
+    name: string;
+  };
   targetConditions: string[];
   brandName?: string;
+  creative?: {
+    displaySettings?: Record<string, any>;
+  };
+  tags?: string[];
+  contentWarnings?: string[];
+  metadata?: Record<string, any>;
+  treatmentCategoryId: string;
   genericName?: string;
   manufacturer?: string;
   imageUrl?: string;

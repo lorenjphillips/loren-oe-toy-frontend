@@ -58,6 +58,13 @@ import GenentechAdTemplate from './adTemplates/GenentechAdTemplate';
 import GSKAdTemplate from './adTemplates/GSKAdTemplate';
 import EliLillyAdTemplate from './adTemplates/EliLillyAdTemplate';
 
+// Import Phase 4 components
+import { FeedbackButton } from './feedback/FeedbackButton';
+
+// Import ethical-ai services
+import { runEthicalCheck } from '../services/ethical-ai/ethicalGuardrails';
+import { getClinicalDecisionSupport } from '../services/clinical-support/decisionSupport';
+
 // Define props interface for SmartAdDisplay
 interface SmartAdDisplayProps {
   question: string;
@@ -69,6 +76,10 @@ interface SmartAdDisplayProps {
     viewTimeMs: number
   }) => void;
   transitionSettings?: Partial<TransitionSettings>;
+  sessionId?: string;
+  enableFeedback?: boolean;
+  enableEthicalGuardrails?: boolean;
+  enableDecisionSupport?: boolean;
 }
 
 // Styled components with enhanced transitions
@@ -136,12 +147,19 @@ const LoadingOverlay = styled(Box)(({ theme }) => ({
  * - Handles transitions between states
  * - Provides professional animations for a polished user experience
  * - Comprehensive analytics tracking
+ * - Ethical AI Guardrails
+ * - Clinical Decision Support
+ * - Feedback mechanisms for inappropriate ads
  */
 export default function SmartAdDisplay({ 
   question, 
   isLoading,
   onAdImpression,
-  transitionSettings: customSettings = {} 
+  transitionSettings: customSettings = {},
+  sessionId = uuidv4(),
+  enableFeedback = true,
+  enableEthicalGuardrails = true,
+  enableDecisionSupport = true
 }: SmartAdDisplayProps) {
   // Merge custom transition settings with defaults
   const settings: TransitionSettings = {
@@ -159,6 +177,11 @@ export default function SmartAdDisplay({
   const [viewStartTime, setViewStartTime] = useState<number | null>(null);
   const [transitionIn, setTransitionIn] = useState<boolean>(false);
   const [adReady, setAdReady] = useState<boolean>(false);
+  
+  // Phase 4 states
+  const [ethicalCheckResult, setEthicalCheckResult] = useState<{passed: boolean; warnings: string[]}>({ passed: true, warnings: [] });
+  const [clinicalSupportInfo, setClinicalSupportInfo] = useState<any>(null);
+  const [showClinicalInfo, setShowClinicalInfo] = useState<boolean>(false);
   
   // Reference to track component mounted state
   const isMounted = useRef(true);
@@ -207,12 +230,48 @@ export default function SmartAdDisplay({
       const enhancedMapping = await enhanceMappingConfidence(pharmaMapping, questionText);
       if (!isMounted.current) return;
       setMappingResult(enhancedMapping);
+
+      // Step 4: Get clinical decision support if enabled
+      if (enableDecisionSupport) {
+        const clinicalSupport = await getClinicalDecisionSupport(
+          questionText,
+          questionClassification,
+          enhancedMapping
+        );
+        if (!isMounted.current) return;
+        setClinicalSupportInfo(clinicalSupport);
+      }
       
-      // Step 4: Get ad content based on the mapping
+      // Step 5: Get ad content based on the mapping
       const adResponse = await getAdContentFromMapping(enhancedMapping);
       if (!isMounted.current) return;
       
       if (adResponse.content.length > 0) {
+        // Step 6: Run ethical check if enabled
+        if (enableEthicalGuardrails) {
+          const ethicalResult = await runEthicalCheck(
+            adResponse.content[0],
+            questionText,
+            questionClassification
+          );
+          if (!isMounted.current) return;
+          setEthicalCheckResult(ethicalResult);
+          
+          // If ethical check fails, don't show the ad
+          if (!ethicalResult.passed) {
+            setAdContent(null);
+            setError('This ad was blocked by ethical guardrails');
+            analyticsService.createEvent(AnalyticsEventType.ETHICAL_BLOCK, {
+              metadata: {
+                adId: adResponse.content[0].id,
+                warnings: ethicalResult.warnings
+              }
+            });
+            setIsClassifying(false);
+            return;
+          }
+        }
+        
         // Trigger transition before setting content
         setTransitionIn(false);
         
@@ -244,6 +303,8 @@ export default function SmartAdDisplay({
             questionText: questionText,
             confidenceScore: enhancedMapping.overallConfidence,
             impressionId: newImpressionId
+          }).catch((err: Error) => {
+            console.error('Failed to record impression:', err);
           });
 
           // Track render performance if we started timing
@@ -297,8 +358,8 @@ export default function SmartAdDisplay({
       if (onAdImpression) {
         onAdImpression({
           adId: adContent.id,
-          companyId: adContent.company.id,
-          categoryId: adContent.treatmentCategory.id,
+          companyId: (adContent as any).company?.id || 'unknown',
+          categoryId: (adContent as any).treatmentCategory?.id || 'unknown',
           viewTimeMs
         });
       }
@@ -308,7 +369,7 @@ export default function SmartAdDisplay({
         impressionId,
         viewTimeMs,
         adContentId: adContent.id
-      }).catch(err => {
+      }).catch((err: Error) => {
         console.error('Failed to record view time:', err);
       });
     }
@@ -374,7 +435,7 @@ export default function SmartAdDisplay({
       // Get specialized settings for this template and treatment category
       const settings = getSpecializedTemplateSettings(
         templateSelection.templateType,
-        adContent.treatmentCategory.id
+        (adContent as any).treatmentCategory?.id || 'default'
       );
       setTemplateSettings(settings);
     }
@@ -408,6 +469,21 @@ export default function SmartAdDisplay({
     };
   }, [adContent]);
 
+  // Toggle clinical info display
+  const toggleClinicalInfo = () => {
+    setShowClinicalInfo(!showClinicalInfo);
+    
+    // Track usage of clinical information
+    if (adContent) {
+      analyticsService.createEvent(AnalyticsEventType.CLINICAL_INFO_TOGGLE, {
+        metadata: {
+          adId: adContent.id,
+          show: !showClinicalInfo
+        }
+      });
+    }
+  };
+
   // When rendering templates, integrate with content timing
   const renderAdTemplate = () => {
     if (!adContent) return null;
@@ -419,13 +495,13 @@ export default function SmartAdDisplay({
         console.log(`Ad CTA clicked: ${adId}`);
         
         // Track CTA click via analytics service
-        analyticsService.trackCTAClick(adId, adContent.company.id, impressionId || '');
+        analyticsService.trackCTAClick(adId, (adContent as any).company?.id || 'unknown', impressionId || '');
         
         // Send tracking data to server
         axios.post('/api/ads/click', {
           adContentId: adId,
           impressionId
-        }).catch(err => {
+        }).catch((err: Error) => {
           console.error('Failed to record click:', err);
         });
       },
@@ -433,7 +509,10 @@ export default function SmartAdDisplay({
       analytics: analyticsStore,
       visibilityTracker: visibilityObserver.current,
       onImpressionTracked: trackViewTime,
-      contentProgress: contentProgress
+      contentProgress: contentProgress,
+      clinicalSupportInfo: showClinicalInfo ? clinicalSupportInfo : null,
+      ethicalWarnings: ethicalCheckResult.warnings,
+      onToggleClinicalInfo: clinicalSupportInfo ? toggleClinicalInfo : undefined
     };
     
     // Render the appropriate template based on type
@@ -547,12 +626,12 @@ export default function SmartAdDisplay({
   }
 
   // Get the display settings from the ad content
-  const displaySettings = adContent.creative.displaySettings || adContent.company.defaultDisplaySettings;
+  const displaySettings = (adContent as any).creative?.displaySettings || (adContent as any).company?.defaultDisplaySettings || {};
   
   // Apply company branding colors
-  const backgroundColor = displaySettings.backgroundColor || adContent.company.primaryColor || '#f9f9f9';
+  const backgroundColor = displaySettings.backgroundColor || (adContent as any).company?.primaryColor || '#f9f9f9';
   const textColor = displaySettings.textColor || '#333333';
-  const accentColor = adContent.company.secondaryColor || theme.palette.primary.main;
+  const accentColor = (adContent as any).company?.secondaryColor || theme.palette.primary.main;
   const borderColor = displaySettings.borderColor || accentColor;
 
   // Track hover events
@@ -599,7 +678,27 @@ export default function SmartAdDisplay({
         {error ? (
           <Typography color="error">{error}</Typography>
         ) : (
-          renderAdTemplate()
+          <>
+            {renderAdTemplate()}
+            
+            {/* Feedback button */}
+            {enableFeedback && adContent && (
+              <Box 
+                sx={{ 
+                  position: 'absolute', 
+                  bottom: 4, 
+                  right: 4,
+                  zIndex: 10
+                }}
+              >
+                <FeedbackButton 
+                  adId={adContent.id}
+                  sessionId={sessionId}
+                  variant="icon"
+                />
+              </Box>
+            )}
+          </>
         )}
       </Box>
     </Fade>

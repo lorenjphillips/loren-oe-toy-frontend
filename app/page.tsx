@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Container, TextField, Button, Typography, Paper, List, Box, AppBar, Toolbar, Switch, FormControlLabel, Collapse, Alert } from '@mui/material';
+import { Container, TextField, Button, Typography, Paper, List, Box, AppBar, Toolbar, Switch, FormControlLabel, Collapse, Alert, Divider } from '@mui/material';
 import { styled } from '@mui/system';
 import { v4 as uuidv4 } from 'uuid';
 import SmartAdDisplay from './components/SmartAdDisplay';
@@ -13,6 +13,10 @@ import TimingIndicator from './components/TimingIndicator';
 import { timeEstimator, TimeEstimationResult } from './services/timeEstimation';
 import { contentTimingService } from './services/contentTiming';
 import Link from 'next/link';
+
+// Phase 4 imports
+import { FeedbackButton } from './components/feedback/FeedbackButton';
+import { detectEthicalIssuesInQuestion } from './services/ethical-ai/ethicalGuardrails';
 
 interface HistoryItem {
   role: string;
@@ -78,13 +82,20 @@ export default function Home() {
   const [timeEstimate, setTimeEstimate] = useState<TimeEstimationResult | null>(null);
   const [canShowAnswer, setCanShowAnswer] = useState<boolean>(false);
   
+  // Phase 4 states
+  const [sessionId] = useState<string>(() => uuidv4());
+  const [enableFeedback, setEnableFeedback] = useState<boolean>(true);
+  const [enableEthicalGuardrails, setEnableEthicalGuardrails] = useState<boolean>(true);
+  const [enableDecisionSupport, setEnableDecisionSupport] = useState<boolean>(true);
+  const [ethicalIssues, setEthicalIssues] = useState<string[]>([]);
+  
   // User's preference for transition settings - could be loaded from profile/cookies
   const [transitionSettings, setTransitionSettings] = useState<Partial<TransitionSettings>>({
     // Default to clinical professional settings
     durationBase: 400, // Slightly faster than default
     enablePulse: true,
     enableStaggered: true,
-    staggerDelay: 80, // Slightly quicker staggering
+    staggerDelay: 80, // Slightly quicker staggering,
   });
 
   const scrollToBottom = () => {
@@ -99,6 +110,17 @@ export default function Home() {
     setLoading(true);
     setStreamingData({ content: '', complete: false });
     setCanShowAnswer(false);
+    
+    // Clear previous ethical issues
+    setEthicalIssues([]);
+
+    // Check for ethical issues in the question if guardrails are enabled
+    if (enableEthicalGuardrails) {
+      const issues = detectEthicalIssuesInQuestion(question);
+      if (issues.length > 0) {
+        setEthicalIssues(issues);
+      }
+    }
 
     // Generate a new question ID for tracking purposes
     const newQuestionId = uuidv4();
@@ -195,7 +217,6 @@ export default function Home() {
   };
 
   const handleAdImpression = (adInfo: { adId: string, companyId: string, categoryId: string, viewTimeMs: number }) => {
-    // Use our context to track ad impressions
     trackAdImpression(adInfo);
   };
   
@@ -225,6 +246,21 @@ export default function Home() {
   // Handle completion notification from TimingIndicator
   const handleTimingComplete = () => {
     setCanShowAnswer(true);
+  };
+
+  // Toggle feedback mechanism
+  const handleFeedbackToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setEnableFeedback(event.target.checked);
+  };
+
+  // Toggle ethical guardrails
+  const handleEthicalGuardrailsToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setEnableEthicalGuardrails(event.target.checked);
+  };
+
+  // Toggle decision support
+  const handleDecisionSupportToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setEnableDecisionSupport(event.target.checked);
   };
 
   useEffect(() => {
@@ -387,9 +423,28 @@ export default function Home() {
               isLoading={loading}
               onAdImpression={handleAdImpression}
               transitionSettings={transitionSettings}
+              sessionId={sessionId}
+              enableFeedback={enableFeedback}
+              enableEthicalGuardrails={enableEthicalGuardrails}
+              enableDecisionSupport={enableDecisionSupport}
             />
           )}
         </ErrorBoundary>
+
+        {/* Display ethical issues if any */}
+        {ethicalIssues.length > 0 && (
+          <Alert 
+            severity="warning" 
+            sx={{ mb: 2 }}
+          >
+            <Typography variant="subtitle2">Potential sensitive content detected:</Typography>
+            <List sx={{ listStyleType: 'disc', pl: 4 }}>
+              {ethicalIssues.map((issue, index) => (
+                <li key={index}>{issue}</li>
+              ))}
+            </List>
+          </Alert>
+        )}
       </Container>
     </>
   );

@@ -49,7 +49,11 @@ export enum AnalyticsEventType {
   KNOWLEDGE_RELATIONSHIP_CLICK = 'knowledge_relationship_click',
   FORMAT_ENGAGEMENT = 'format_engagement',
   FORMAT_COMPLETION = 'format_completion',
-  QUESTION_TYPE_CORRELATION = 'question_type_correlation'
+  QUESTION_TYPE_CORRELATION = 'question_type_correlation',
+  // Phase 4 analytics events
+  ETHICAL_BLOCK = 'ethical_block',
+  CLINICAL_INFO_TOGGLE = 'clinical_info_toggle',
+  FEEDBACK_SUBMIT = 'feedback_submit'
 }
 
 /**
