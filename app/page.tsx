@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import TimingIndicator from './components/TimingIndicator';
 import { timeEstimator, TimeEstimationResult } from './services/timeEstimation';
 import { contentTimingService } from './services/contentTiming';
+import Link from 'next/link';
 
 interface HistoryItem {
   role: string;
@@ -254,6 +255,9 @@ export default function Home() {
             <Typography variant="h6" style={{ flexGrow: 1, fontFamily: 'Roboto, sans-serif' }}>
               Simple Ask
             </Typography>
+            <Link href="/knowledge-graph" passHref style={{ textDecoration: 'none', color: 'inherit', marginRight: '10px' }}>
+              <Button color="inherit">Knowledge Graph</Button>
+            </Link>
             <Button color="inherit" onClick={toggleAdminPanel} style={{ marginRight: '10px' }}>
               {showAdmin ? 'Hide Admin' : 'Admin'}
             </Button>

@@ -1,0 +1,11 @@
+feat: visual knowledge graph framework
+
+Implements a comprehensive knowledge graph visualization system with:
+- GraphEngine for D3-based rendering and interactions
+- NodeTypes for defining and displaying different node types
+- EdgeTypes for relationship visualization with color-coding and evidence strength
+- InteractionControls for zoom, pan, and graph manipulation
+- Sample oncology knowledge graph data model
+- Knowledge graph route and demo UI
+
+This system allows for visualizing complex relationships between treatments and medical concepts, with rich metadata and evidence citations. 
