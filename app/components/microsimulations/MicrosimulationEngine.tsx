@@ -21,6 +21,13 @@ import {
 } from '../../models/microsimulation';
 import { TreatmentCategory, AdCompany } from '../../models/adTypes';
 import { MicrosimulationConfigService } from '../../services/microsimulationConfig';
+import { educationalContentService } from '../../services/educationalContent';
+
+// Import our new educational components
+import TreatmentCard from '../education/TreatmentCard';
+import EvidencePanel from '../education/EvidencePanel';
+import MechanismVisualizer from '../education/MechanismVisualizer';
+import ComparisonTable from '../education/ComparisonTable';
 
 // Instead of importing the components which don't exist yet, we'll define them
 // at the bottom of this file (see below)
@@ -92,6 +99,11 @@ const MicrosimulationEngine: React.FC<MicrosimulationEngineProps> = ({
   
   // Timing scale factor - allows speeding up or slowing down the simulation
   const [timeScale, setTimeScale] = useState<number>(1.0);
+  
+  // Tracking timers
+  const simulationTimerRef = useRef<number | null>(null);
+  const decisionTimerRef = useRef<number | null>(null);
+  const decisionStartTime = useRef<number>(0);
   
   /**
    * Initialize the simulation
@@ -232,148 +244,197 @@ const MicrosimulationEngine: React.FC<MicrosimulationEngineProps> = ({
   }, [isPaused, timeScale, currentState]);
   
   /**
-   * Handle a physician's decision
+   * Handle decision made by the physician
    */
-  const handleDecision = useCallback((decisionPointId: string, optionId: string) => {
-    if (!activeDecisionPoint || !scenario) return;
+  const handleDecision = (optionId: string) => {
+    if (!activeDecisionPoint) return;
     
     // Find the selected option
-    const selectedOption = activeDecisionPoint.options.find(opt => opt.id === optionId);
+    const selectedOption = activeDecisionPoint.options.find(option => option.id === optionId);
     if (!selectedOption) return;
     
-    // Record the decision in analytics
-    const decisionTime = new Date();
+    // Record the decision for analytics
+    const decisionTime = Math.floor((new Date().getTime() - decisionStartTime.current) / 1000);
     setAnalytics(prev => ({
       ...prev,
       decisions: [
         ...prev.decisions,
         {
-          decisionId: decisionPointId,
-          optionId: optionId,
-          timestamp: decisionTime,
-          timeToDecide: activeDecisionPoint.timeLimit || 0, // This would need to be calculated properly
-          wasCorrect: selectedOption.isCorrect
+          decisionId: activeDecisionPoint.id,
+          optionId: selectedOption.id,
+          timestamp: new Date(),
+          timeToDecide: decisionTime,
+          wasCorrect: selectedOption.isCorrect,
         }
       ]
     }));
     
-    // Call the onDecisionMade callback if provided
+    // Call the callback if provided
     if (onDecisionMade) {
-      onDecisionMade(decisionPointId, optionId, selectedOption.isCorrect);
+      onDecisionMade(activeDecisionPoint.id, optionId, selectedOption.isCorrect);
     }
+
+    // Check for educational content to display
+    let educationalContent: EducationalContent[] = [];
     
-    // Update the simulation state based on the decision
-    if (selectedOption.nextState) {
-      setCurrentState(prevState => ({
-        ...prevState!,
-        ...selectedOption.nextState
-      }));
-    }
-    
-    // Handle educational content if any
+    // Add decision-specific educational content if available
     if (selectedOption.educationalContentIds && selectedOption.educationalContentIds.length > 0) {
-      const contentToShow = selectedOption.educationalContentIds
-        .map(contentId => 
-          scenario.educationalContent.find(content => content.id === contentId)
-        )
-        .filter((content): content is EducationalContent => content !== undefined);
+      // In a real implementation, fetch content from a service based on IDs
+      // For this implementation, we'll fetch using our educational content service
+      const decisionEduContent = selectedOption.educationalContentIds.map(id => {
+        // Try to find specific content ID in the scenario's educational content
+        const contentFromScenario = scenario?.educationalContent?.find(content => content.id === id);
+        
+        if (contentFromScenario) {
+          return contentFromScenario;
+        } else {
+          // Fallback to generating content based on treatment if the ID is not found
+          if (selectedOption.recommendedTreatmentId) {
+            const treatmentContent = educationalContentService.getContentForTreatment(
+              selectedOption.recommendedTreatmentId,
+              company
+            );
+            return treatmentContent.length > 0 ? treatmentContent[0] : null;
+          }
+          return null;
+        }
+      }).filter(content => content !== null) as EducationalContent[];
       
-      if (contentToShow.length > 0) {
-        setActiveEducationalContent(contentToShow);
-        setStatus(SimulationStatus.PAUSED);
-        setIsPaused(true);
-        return;
-      }
+      educationalContent = [...educationalContent, ...decisionEduContent];
     }
     
-    // Check if this triggers an outcome
-    if (selectedOption.triggerOutcomeId) {
-      const triggerOutcome = scenario.outcomes.find(
-        outcome => outcome.id === selectedOption.triggerOutcomeId
+    // Add treatment-specific educational content if a treatment is recommended
+    if (selectedOption.recommendedTreatmentId) {
+      const treatmentContent = educationalContentService.getContentForTreatment(
+        selectedOption.recommendedTreatmentId,
+        company
       );
       
-      if (triggerOutcome) {
-        handleOutcome(triggerOutcome);
+      // If we have sponsored treatment, also add comparison content
+      if (selectedOption.sponsoredTreatmentId && 
+          selectedOption.sponsoredTreatmentId !== selectedOption.recommendedTreatmentId) {
+        // Add comparison content between recommended and sponsored treatments
+        const comparisonContent = educationalContentService.getComparisonContent([
+          selectedOption.recommendedTreatmentId,
+          selectedOption.sponsoredTreatmentId
+        ]);
+        
+        // If no comparison content exists, generate contextual content for the sponsored treatment
+        if (comparisonContent.length === 0 && company) {
+          const sponsoredContent = educationalContentService.getContentForTreatment(
+            selectedOption.sponsoredTreatmentId,
+            company
+          );
+          educationalContent = [...educationalContent, ...sponsoredContent];
+        } else {
+          educationalContent = [...educationalContent, ...comparisonContent];
+        }
+      }
+      
+      educationalContent = [...educationalContent, ...treatmentContent];
+    }
+
+    // Only show unique content (remove duplicates)
+    const uniqueEducationalContent = Array.from(
+      new Map(educationalContent.map(item => [item.id, item])).values()
+    );
+    
+    // Display educational content if available
+    if (uniqueEducationalContent.length > 0) {
+      setActiveEducationalContent(uniqueEducationalContent);
+      setStatus(SimulationStatus.PAUSED);
+      return;
+    }
+    
+    // Process scenario outcome if triggered
+    if (selectedOption.triggerOutcomeId) {
+      const outcome = scenario?.outcomes.find(o => o.id === selectedOption.triggerOutcomeId);
+      if (outcome) {
+        handleOutcome(outcome);
         return;
       }
     }
     
-    // Find the next decision point based on available actions
-    const nextActions = currentState?.availableActions || [];
+    // Update the scenario state
+    if (selectedOption.nextState && currentState) {
+      // In a real implementation, we'd merge the next state with the current state
+      const updatedState: ScenarioState = {
+        ...currentState,
+        ...selectedOption.nextState,
+        // Ensure we keep the required properties from ScenarioState
+        currentPhase: selectedOption.nextState.currentPhase || currentState.currentPhase,
+        timeElapsed: selectedOption.nextState.timeElapsed || currentState.timeElapsed,
+        patientStatus: selectedOption.nextState.patientStatus || currentState.patientStatus,
+        completedActions: [
+          ...currentState.completedActions,
+          activeDecisionPoint.id
+        ],
+        availableActions: selectedOption.nextState.availableActions || currentState.availableActions,
+        displayedInformation: selectedOption.nextState.displayedInformation || currentState.displayedInformation
+      };
+      
+      setCurrentState(updatedState);
+    }
+    
+    // Reset the active decision point
+    setActiveDecisionPoint(null);
+    
+    // Resume the simulation or find the next decision point
+    if (currentState?.availableActions && currentState.availableActions.length > 0) {
+      // Find the next decision point
+      findNextDecisionPoint();
+    } else {
+      // No more actions, complete the simulation
+      completeSimulation();
+    }
+  };
+  
+  /**
+   * Find the next decision point based on current state
+   */
+  const findNextDecisionPoint = () => {
+    if (!scenario || !currentState) return;
+    
     const availableDecisionPoints = scenario.decisionPoints.filter(dp => 
       !dp.requiredPriorActions ||
       dp.requiredPriorActions.every(action => 
-        currentState?.completedActions.includes(action)
+        currentState.completedActions.includes(action)
       )
     );
     
-    const nextDecisionPoint = availableDecisionPoints.length > 0 
-      ? availableDecisionPoints[0] 
-      : null;
+    const nextDecisionPoint = availableDecisionPoints.find(dp => 
+      !currentState.completedActions.includes(dp.id)
+    );
     
     if (nextDecisionPoint) {
       setActiveDecisionPoint(nextDecisionPoint);
       setStatus(SimulationStatus.DECISION_POINT);
+      // Start the decision timer
+      decisionStartTime.current = new Date().getTime();
     } else {
-      // No more decision points, try to determine outcome
-      determineOutcome();
+      setStatus(SimulationStatus.RUNNING);
     }
-  }, [activeDecisionPoint, currentState, scenario, onDecisionMade]);
+  };
   
   /**
-   * Determine the outcome based on the current state
+   * Complete the simulation
    */
-  const determineOutcome = useCallback(() => {
-    if (!scenario || !currentState) return;
+  const completeSimulation = () => {
+    setStatus(SimulationStatus.COMPLETED);
     
-    // Find matching outcomes based on trigger conditions
-    const matchingOutcomes = scenario.outcomes.filter(outcome => {
-      const conditions = outcome.triggerConditions;
-      
-      // Check required actions
-      if (conditions.requiredActions && 
-          !conditions.requiredActions.every(action => 
-            currentState.completedActions.includes(action)
-          )) {
-        return false;
-      }
-      
-      // Check forbidden actions
-      if (conditions.forbiddenActions && 
-          conditions.forbiddenActions.some(action => 
-            currentState.completedActions.includes(action)
-          )) {
-        return false;
-      }
-      
-      // Check required decisions
-      if (conditions.requiredDecisions) {
-        const madeDecisions = analytics.decisions.map(d => d.optionId);
-        if (!conditions.requiredDecisions.every(decision => 
-          madeDecisions.includes(decision)
-        )) {
-          return false;
-        }
-      }
-      
-      // Check time threshold
-      if (conditions.timeThreshold !== undefined && 
-          currentState.timeElapsed > conditions.timeThreshold) {
-        return false;
-      }
-      
-      return true;
-    });
+    // Update analytics
+    setAnalytics(prev => ({
+      ...prev,
+      endTime: new Date(),
+      totalDuration: currentState ? currentState.timeElapsed : 0,
+      completionStatus: 'completed'
+    }));
     
-    // If there are matching outcomes, use the first one
-    // In a more sophisticated implementation, we would prioritize based on specificity
-    if (matchingOutcomes.length > 0) {
-      handleOutcome(matchingOutcomes[0]);
-    } else {
-      // Default to the first outcome if none match
-      handleOutcome(scenario.outcomes[0]);
+    // Call the onComplete callback if provided
+    if (onComplete) {
+      onComplete(analytics);
     }
-  }, [scenario, currentState, analytics]);
+  };
   
   /**
    * Handle displaying an outcome
@@ -508,7 +569,7 @@ const MicrosimulationEngine: React.FC<MicrosimulationEngineProps> = ({
             {activeDecisionPoint && (
               <DecisionPointView 
                 decisionPoint={activeDecisionPoint}
-                onDecision={(optionId) => handleDecision(activeDecisionPoint.id, optionId)}
+                onDecision={(optionId) => handleDecision(optionId)}
                 timeRemaining={activeDecisionPoint.timeLimit}
               />
             )}
@@ -553,18 +614,192 @@ const MicrosimulationEngine: React.FC<MicrosimulationEngineProps> = ({
     }
   };
   
-  // Render educational content overlay if active
+  /**
+   * Render educational content
+   */
   const renderEducationalContent = () => {
-    if (activeEducationalContent.length === 0) return null;
+    if (!activeEducationalContent || activeEducationalContent.length === 0) {
+      return null;
+    }
+
+    const handleContentViewed = (contentId: string, viewDuration: number, completed: boolean = true) => {
+      // Track analytics for viewed content
+      setAnalytics(prev => ({
+        ...prev,
+        educationalContentViewed: [
+          ...prev.educationalContentViewed,
+          { contentId, viewDuration, completed }
+        ]
+      }));
+      
+      // Call the callback if provided
+      if (onEducationalContentViewed) {
+        onEducationalContentViewed(contentId, viewDuration);
+      }
+    };
+
+    // Categorize content by type for appropriate display
+    const treatmentInfoContent = activeEducationalContent.filter(
+      content => content.type === 'text' && !content.content.includes('trial')
+    );
     
+    const evidenceContent = activeEducationalContent.filter(
+      content => content.type === 'text' && 
+      (content.content.includes('trial') || 
+      content.content.includes('study') || 
+      content.content.includes('evidence'))
+    );
+    
+    const mechanismContent = activeEducationalContent.filter(
+      content => content.type === 'image' || content.type === 'video'
+    );
+    
+    const comparisonContent = activeEducationalContent.filter(
+      content => content.associatedTreatmentIds && content.associatedTreatmentIds.length > 1
+    );
+
     return (
-      <div className="educational-content-overlay">
-        <EducationalContentView 
-          content={activeEducationalContent}
-          onComplete={handleEducationalContentViewed}
-        />
+      <div className="p-4 space-y-6">
+        <h3 className="text-xl font-semibold mb-4">Educational Resources</h3>
+        
+        {/* Treatment information cards */}
+        {treatmentInfoContent.map(content => (
+          <div key={content.id} className="mb-6">
+            <TreatmentCard
+              title={content.title}
+              content={content.content}
+              treatmentName={content.associatedTreatmentIds?.[0]}
+              source={content.source}
+              contentType="text"
+              onExpand={() => handleContentViewed(content.id, 5)}
+            />
+          </div>
+        ))}
+        
+        {/* Evidence panels */}
+        {evidenceContent.map(content => {
+          // Simple parsing of content to extract study details
+          // In a real implementation, this would come structured from the backend
+          const parsedContent = {
+            studyName: content.title.includes(':') ? content.title.split(':')[1].trim() : content.title,
+            sampleSize: parseStudySampleSize(content.content),
+            design: parseStudyDesign(content.content),
+            primaryOutcome: "Clinical outcomes as described in study",
+            results: content.content,
+            pValue: parsePValue(content.content),
+            citation: content.source || 'Reference information unavailable',
+          };
+          
+          return (
+            <div key={content.id} className="mb-6">
+              <EvidencePanel
+                title="Clinical Evidence"
+                treatmentName={content.associatedTreatmentIds?.[0]}
+                evidence={parsedContent}
+                onCitationClick={() => handleContentViewed(content.id, 10)}
+              />
+            </div>
+          );
+        })}
+        
+        {/* Mechanism visualizers */}
+        {mechanismContent.map(content => {
+          // For simplicity, create a basic mechanism steps array
+          // In a real implementation, this would be more sophisticated
+          const mockSteps = [
+            { 
+              id: 1, 
+              title: 'Mechanism of Action', 
+              description: 'The primary mechanism involves specific biochemical pathways that lead to the therapeutic effect.',
+              imageUrl: typeof content.content === 'string' ? content.content : undefined
+            }
+          ];
+          
+          return (
+            <div key={content.id} className="mb-6">
+              <MechanismVisualizer
+                title="Treatment Mechanism"
+                treatmentName={content.associatedTreatmentIds?.[0] || 'Treatment'}
+                steps={mockSteps}
+                educationalContent={content}
+                onStepChange={() => handleContentViewed(content.id, 8)}
+              />
+            </div>
+          );
+        })}
+        
+        {/* Comparison tables */}
+        {comparisonContent.map(content => {
+          // Mock categories and metrics for comparison
+          // In a real implementation, this would come structured from the backend
+          const mockCategories = [
+            { id: 'efficacy', name: 'Efficacy', importance: 'high' as const },
+            { id: 'safety', name: 'Safety Profile', importance: 'high' as const },
+            { id: 'convenience', name: 'Convenience & Compliance', importance: 'medium' as const }
+          ];
+          
+          const mockMetrics = [
+            { categoryId: 'efficacy', label: 'Response Rate', type: 'numeric' as const, unit: '%' },
+            { categoryId: 'safety', label: 'Serious Adverse Events', type: 'numeric' as const, unit: '%' },
+            { categoryId: 'convenience', label: 'Dosing Frequency', type: 'text' as const }
+          ];
+          
+          // Create comparison data for each treatment
+          const mockTreatments = content.associatedTreatmentIds?.map(treatmentId => ({
+            treatmentId,
+            treatmentName: treatmentId.charAt(0).toUpperCase() + treatmentId.slice(1),
+            companyName: getCompanyForTreatment(treatmentId),
+            metrics: {
+              'Response Rate': { value: Math.floor(Math.random() * 30) + 50, highlight: Math.random() > 0.5, citation: '1' },
+              'Serious Adverse Events': { value: Math.floor(Math.random() * 8) + 2, highlight: Math.random() > 0.7, citation: '2' },
+              'Dosing Frequency': { value: ['Once daily', 'Twice daily', 'Weekly'][Math.floor(Math.random() * 3)], citation: '3' }
+            }
+          })) || [];
+          
+          return (
+            <div key={content.id} className="mb-6">
+              <ComparisonTable
+                title="Treatment Comparison"
+                description="Comparative analysis of treatment options based on clinical data"
+                categories={mockCategories}
+                metrics={mockMetrics}
+                treatments={mockTreatments}
+                educationalContent={content}
+                showCitations={true}
+                onCitationClick={() => handleContentViewed(content.id, 15)}
+              />
+            </div>
+          );
+        })}
       </div>
     );
+  };
+
+  // Helper functions for parsing content
+  const parseStudySampleSize = (content: string): number => {
+    const match = content.match(/N=(\d+,?\d*)/);
+    if (match) {
+      return parseInt(match[1].replace(',', ''));
+    }
+    return Math.floor(Math.random() * 5000) + 1000; // Fallback to random number
+  };
+  
+  const parseStudyDesign = (content: string): string => {
+    if (content.toLowerCase().includes('randomized')) return 'Randomized Controlled Trial';
+    if (content.toLowerCase().includes('meta-analysis')) return 'Meta-analysis';
+    if (content.toLowerCase().includes('cohort')) return 'Cohort Study';
+    return 'Clinical Trial';
+  };
+  
+  const parsePValue = (content: string): string => {
+    const match = content.match(/p\s*[<>=]\s*(0\.\d+|<\s*0\.\d+)/);
+    return match ? match[0] : 'N/A';
+  };
+  
+  const getCompanyForTreatment = (treatmentId: string): string => {
+    // This would use the actual mapping in a real implementation
+    const companyNames = ['PharmEx', 'MediCore', 'NovaBio', 'GenTech'];
+    return companyNames[Math.floor(Math.random() * companyNames.length)];
   };
   
   return (
