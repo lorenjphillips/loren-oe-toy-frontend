@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "OPENAI_API_KEY": "@openai-api-key",
+    "OPENAI_MODEL": "@openai-model",
+    "AD_ANALYTICS_ENABLED": "@ad-analytics-enabled",
+    "AD_MAX_SLOTS_PER_PAGE": "@ad-max-slots-per-page",
+    "AD_REFRESH_INTERVAL": "@ad-refresh-interval",
+    "AD_MIN_CONFIDENCE_THRESHOLD": "@ad-min-confidence-threshold",
+    "FEATURE_AD_SYSTEM": "@feature-ad-system",
+    "FEATURE_AD_ANALYTICS": "@feature-ad-analytics",
+    "FEATURE_AD_ADMIN": "@feature-ad-admin"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, stale-while-revalidate=300"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ]
+} 
