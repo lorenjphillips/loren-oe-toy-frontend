@@ -22,6 +22,11 @@ import { mapQuestionToCompanies, PharmaMappingResult } from '../services/adMappi
 import { enhanceMappingConfidence, EnhancedMappingResult } from '../services/confidenceScoring';
 import { getAdContentFromMapping } from '../services/adContentService';
 import { AdContent, AdContentResponse } from '../models/adTypes';
+import { 
+  selectAdTemplate, 
+  AdTemplateType, 
+  getSpecializedTemplateSettings 
+} from '../services/adTemplateSelector';
 
 // Import transition utilities
 import { 
@@ -34,6 +39,13 @@ import {
   getTransitionString,
   getOptimizedStyles
 } from '../styles/transitions';
+
+// Import ad templates
+import BaseAdTemplate from './adTemplates/BaseAdTemplate';
+import PfizerAdTemplate from './adTemplates/PfizerAdTemplate';
+import GenentechAdTemplate from './adTemplates/GenentechAdTemplate';
+import GSKAdTemplate from './adTemplates/GSKAdTemplate';
+import EliLillyAdTemplate from './adTemplates/EliLillyAdTemplate';
 
 // Define props interface for SmartAdDisplay
 interface SmartAdDisplayProps {
@@ -138,6 +150,10 @@ export default function SmartAdDisplay({
   // Reference to track component mounted state
   const isMounted = useRef(true);
   const theme = useTheme();
+
+  // Add state to track selected template and settings
+  const [templateType, setTemplateType] = useState<AdTemplateType>(AdTemplateType.DEFAULT);
+  const [templateSettings, setTemplateSettings] = useState<Record<string, any>>({});
 
   // Function to classify the question and find appropriate ads
   const classifyAndGetAds = async (questionText: string) => {
@@ -269,6 +285,22 @@ export default function SmartAdDisplay({
     classifyAndGetAds(question);
   }, [question]);
 
+  // Update the effect that processes ad content to also select the template
+  useEffect(() => {
+    if (adContent && mappingResult) {
+      // Select appropriate template based on content and mapping
+      const templateSelection = selectAdTemplate(adContent, mappingResult);
+      setTemplateType(templateSelection.templateType);
+      
+      // Get specialized settings for this template and treatment category
+      const settings = getSpecializedTemplateSettings(
+        templateSelection.templateType,
+        adContent.treatmentCategory.id
+      );
+      setTemplateSettings(settings);
+    }
+  }, [adContent, mappingResult]);
+
   // Don't render anything if not loading and no ad content
   if (!isLoading && !adContent) return null;
 
@@ -342,172 +374,89 @@ export default function SmartAdDisplay({
   const accentColor = adContent.company.secondaryColor || theme.palette.primary.main;
   const borderColor = displaySettings.borderColor || accentColor;
 
-  return (
-    <Fade 
-      in={transitionIn && settings.enableFadeTransitions} 
-      timeout={settings.fadeInDuration}
-      mountOnEnter
-      unmountOnExit
-    >
-      <StyledPaper 
-        elevation={2} 
-        sx={{ 
-          backgroundColor,
-          borderColor: displaySettings.border ? borderColor : 'transparent',
-          borderWidth: displaySettings.border ? 1 : 0,
-          borderStyle: 'solid',
-          borderRadius: displaySettings.cornerRadius || theme.shape.borderRadius,
-          maxWidth: displaySettings.maxWidth || '100%',
-          padding: displaySettings.padding || theme.spacing(2),
-        }}
-      >
-        <SponsoredBadge>Sponsored</SponsoredBadge>
+  // Render different template based on type
+  const renderAdTemplate = () => {
+    if (!adContent) return null;
+    
+    const commonProps = {
+      adContent,
+      onCTAClick: (adId) => {
+        // Handle CTA click
+        console.log(`Ad CTA clicked: ${adId}`);
         
+        // Send tracking data to server
+        axios.post('/api/ads/click', {
+          adContentId: adId,
+          impressionId
+        }).catch(err => {
+          console.error('Failed to record click:', err);
+        });
+      }
+    };
+    
+    // Render the appropriate template based on type
+    switch (templateType) {
+      case AdTemplateType.PFIZER:
+        return (
+          <PfizerAdTemplate
+            {...commonProps}
+            showEvidenceBox={templateSettings.showEvidenceBox}
+            evidenceText={templateSettings.evidenceText}
+          />
+        );
+        
+      case AdTemplateType.GENENTECH:
+        return (
+          <GenentechAdTemplate
+            {...commonProps}
+            showStats={templateSettings.showStats}
+            clinicalStats={templateSettings.clinicalStats}
+          />
+        );
+        
+      case AdTemplateType.GSK:
+        return (
+          <GSKAdTemplate
+            {...commonProps}
+            showEvidencePanel={templateSettings.showEvidencePanel}
+            evidencePoints={templateSettings.evidencePoints}
+          />
+        );
+        
+      case AdTemplateType.ELI_LILLY:
+        return (
+          <EliLillyAdTemplate
+            {...commonProps}
+            showDataMetrics={templateSettings.showDataMetrics}
+            customMetrics={templateSettings.customMetrics}
+          />
+        );
+        
+      default:
+        return <BaseAdTemplate {...commonProps} />;
+    }
+  };
+
+  return (
+    <Fade in={transitionIn} timeout={settings.durationMedium}>
+      <Box sx={{ position: 'relative' }}>
         {isClassifying && (
           <LoadingOverlay>
-            {settings.enablePulse ? (
-              <PulseContainer>
-                <CircularProgress size={24} />
-              </PulseContainer>
-            ) : (
-              <CircularProgress size={24} />
-            )}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <CircularProgress size={40} color="primary" />
+              <Typography variant="body2" sx={{ mt: 2 }}>
+                Finding relevant information...
+              </Typography>
+            </Box>
           </LoadingOverlay>
         )}
-
-        <Box>
-          {/* Company logo and branding */}
-          <AnimatedContent delay={settings.enableStaggered ? 0 : 0}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-              {adContent.company.logoUrl && (
-                <Zoom in={true} style={{ transitionDelay: settings.enableStaggered ? '100ms' : '0ms' }}>
-                  <Box 
-                    component="img"
-                    src={adContent.company.logoUrl}
-                    alt={adContent.company.name}
-                    sx={{ 
-                      height: 40, 
-                      mr: 1.5,
-                      borderRadius: '4px'
-                    }}
-                  />
-                </Zoom>
-              )}
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: textColor }}>
-                  {adContent.creative.headline}
-                </Typography>
-                {adContent.creative.subheadline && (
-                  <Typography variant="body2" sx={{ color: textColor }}>
-                    {adContent.creative.subheadline}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-          </AnimatedContent>
-
-          {/* Main content */}
-          <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay : 0}>
-            <Typography variant="body2" sx={{ my: 1.5, color: textColor }}>
-              {adContent.creative.bodyText}
-            </Typography>
-          </AnimatedContent>
-          
-          {/* Ad image if available */}
-          {adContent.creative.imageUrl && (
-            <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 1.5 : 0}>
-              <Box 
-                component="img"
-                src={adContent.creative.imageUrl}
-                alt={adContent.creative.headline}
-                sx={{ 
-                  width: '100%', 
-                  maxHeight: 200, 
-                  objectFit: 'contain',
-                  my: 1.5,
-                  borderRadius: 1 
-                }}
-              />
-            </AnimatedContent>
-          )}
-          
-          {/* Treatment categories/tags */}
-          <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 2 : 0}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-              <Grow in={true} style={{ transformOrigin: '0 0 0', transitionDelay: settings.enableStaggered ? '300ms' : '0ms' }}>
-                <Chip 
-                  label={adContent.treatmentCategory.name} 
-                  size="small" 
-                  sx={{ 
-                    backgroundColor: `${accentColor}22`,  // Using hex opacity
-                    color: accentColor,
-                    fontWeight: 500
-                  }} 
-                />
-              </Grow>
-              {mappingResult?.keywordsUsed.slice(0, 2).map((keyword, index) => (
-                <Grow 
-                  key={index} 
-                  in={true} 
-                  style={{ 
-                    transformOrigin: '0 0 0', 
-                    transitionDelay: settings.enableStaggered ? `${350 + index * 50}ms` : '0ms'
-                  }}
-                >
-                  <Chip 
-                    label={keyword} 
-                    size="small"
-                    sx={{ 
-                      backgroundColor: theme.palette.grey[100],
-                      color: theme.palette.text.secondary
-                    }} 
-                  />
-                </Grow>
-              ))}
-            </Box>
-          </AnimatedContent>
-          
-          {/* Call to action */}
-          <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 2.5 : 0}>
-            <Button 
-              variant="contained" 
-              fullWidth 
-              onClick={() => {
-                // Track the click
-                axios.post('/api/ads/click', {
-                  adContentId: adContent.id,
-                  impressionId
-                }).catch(console.error);
-                
-                // Open the company website or target URL
-                window.open(adContent.company.website || '#', '_blank');
-              }}
-              sx={{ 
-                mt: 1,
-                backgroundColor: accentColor,
-                transition: getTransitionString(['background-color', 'transform']),
-                '&:hover': {
-                  backgroundColor: theme.palette.mode === 'light' 
-                    ? theme.palette.darken(accentColor, 0.1)
-                    : theme.palette.lighten(accentColor, 0.1),
-                  transform: 'translateY(-2px)'
-                }
-              }}
-            >
-              {adContent.creative.callToAction}
-            </Button>
-          </AnimatedContent>
-          
-          {/* Legal disclaimer in small text */}
-          {adContent.company.legalDisclaimer && (
-            <AnimatedContent delay={settings.enableStaggered ? settings.staggerDelay * 3 : 0}>
-              <Typography variant="caption" display="block" sx={{ mt: 1, color: theme.palette.text.secondary, fontSize: '0.6rem' }}>
-                {adContent.company.legalDisclaimer}
-              </Typography>
-            </AnimatedContent>
-          )}
-        </Box>
-      </StyledPaper>
+        
+        {error ? (
+          <Typography color="error">{error}</Typography>
+        ) : (
+          renderAdTemplate()
+        )}
+      </Box>
     </Fade>
   );
 } 
