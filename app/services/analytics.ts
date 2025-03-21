@@ -35,7 +35,21 @@ export enum AnalyticsEventType {
   SCROLL_OUT_OF_VIEW = 'scroll_out_of_view',
   AD_LOADED = 'ad_loaded',
   AD_ERROR = 'ad_error',
-  AD_CLOSED = 'ad_closed'
+  AD_CLOSED = 'ad_closed',
+  // Phase 2 analytics events
+  MICROSIMULATION_START = 'microsimulation_start',
+  MICROSIMULATION_STEP = 'microsimulation_step',
+  MICROSIMULATION_DECISION = 'microsimulation_decision',
+  MICROSIMULATION_CONTENT_VIEW = 'microsimulation_content_view',
+  MICROSIMULATION_COMPLETE = 'microsimulation_complete',
+  KNOWLEDGE_NODE_EXPLORE = 'knowledge_node_explore',
+  KNOWLEDGE_ZOOM = 'knowledge_zoom',
+  KNOWLEDGE_NAVIGATION = 'knowledge_navigation', 
+  KNOWLEDGE_TREATMENT_FOCUS = 'knowledge_treatment_focus',
+  KNOWLEDGE_RELATIONSHIP_CLICK = 'knowledge_relationship_click',
+  FORMAT_ENGAGEMENT = 'format_engagement',
+  FORMAT_COMPLETION = 'format_completion',
+  QUESTION_TYPE_CORRELATION = 'question_type_correlation'
 }
 
 /**
@@ -59,7 +73,15 @@ export enum KnowledgeGraphInteractionType {
   PAN = 'pan',
   FILTER = 'filter',
   SEARCH = 'search',
-  RESET = 'reset'
+  RESET = 'reset',
+  // Phase 2 interaction types
+  NODE_FOCUS = 'node_focus',
+  NODE_COMPARE = 'node_compare',
+  TREATMENT_FOCUS = 'treatment_focus',
+  PATH_TRACE = 'path_trace',
+  ZOOM_IN = 'zoom_in',
+  ZOOM_OUT = 'zoom_out',
+  RELATIONSHIP_EXPLORE = 'relationship_explore'
 }
 
 /**
@@ -514,6 +536,295 @@ export function trackPharmaAffiliationsViewed(
 }
 
 /**
+ * Track microsimulation start event
+ */
+export function trackMicrosimulationStart(
+  simulationId: string,
+  questionContext: string,
+  simulationType: string,
+  expectedStepCount: number,
+  userId?: string,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): string {
+  const eventId = uuidv4();
+  
+  const event = createEvent(AnalyticsEventType.MICROSIMULATION_START, {
+    id: eventId,
+    sessionId: sessionId || sessionId,
+    metadata: {
+      simulationId,
+      questionContext,
+      simulationType,
+      expectedStepCount,
+      userId,
+      startTimestamp: Date.now()
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+  return eventId;
+}
+
+/**
+ * Track microsimulation step completion
+ */
+export function trackMicrosimulationStep(
+  simulationId: string,
+  stepId: string,
+  stepNumber: number,
+  stepType: string,
+  timeSpentMs: number,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.MICROSIMULATION_STEP, {
+    sessionId: sessionId || sessionId,
+    metadata: {
+      simulationId,
+      stepId,
+      stepNumber,
+      stepType,
+      timeSpentMs,
+      cumulativeTimeMs: metadata?.cumulativeTimeMs,
+      previousStepId: metadata?.previousStepId
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track a decision made in a microsimulation
+ */
+export function trackMicrosimulationDecision(
+  simulationId: string,
+  stepId: string,
+  decisionId: string,
+  decisionPath: string,
+  timeToDecideMs: number,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.MICROSIMULATION_DECISION, {
+    sessionId: sessionId || sessionId,
+    metadata: {
+      simulationId,
+      stepId,
+      decisionId,
+      decisionPath,
+      timeToDecideMs,
+      optionsPresented: metadata?.optionsPresented,
+      decisionRationale: metadata?.decisionRationale
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track educational content viewed during simulation
+ */
+export function trackMicrosimulationContentView(
+  simulationId: string,
+  contentId: string,
+  contentType: string,
+  stepId: string,
+  viewDurationMs: number,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.MICROSIMULATION_CONTENT_VIEW, {
+    sessionId: sessionId || sessionId,
+    metadata: {
+      simulationId,
+      contentId,
+      contentType,
+      stepId,
+      viewDurationMs,
+      contentTopic: metadata?.contentTopic,
+      contentProvider: metadata?.contentProvider,
+      completionPercentage: metadata?.completionPercentage
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track microsimulation completion
+ */
+export function trackMicrosimulationComplete(
+  simulationId: string,
+  totalTimeMs: number,
+  completedSteps: number,
+  totalSteps: number,
+  finalPath: string,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.MICROSIMULATION_COMPLETE, {
+    sessionId: sessionId || sessionId,
+    metadata: {
+      simulationId, 
+      totalTimeMs,
+      completedSteps,
+      totalSteps,
+      completionRate: completedSteps / totalSteps,
+      finalPath,
+      averageTimePerStepMs: totalTimeMs / completedSteps,
+      decisionsCount: metadata?.decisionsCount,
+      contentViewsCount: metadata?.contentViewsCount
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track treatment node focus time in knowledge graph
+ */
+export function trackKnowledgeTreatmentFocus(
+  graphId: string,
+  nodeId: string,
+  treatmentName: string,
+  focusDurationMs: number,
+  companyId?: string,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.KNOWLEDGE_TREATMENT_FOCUS, {
+    sessionId: sessionId || sessionId,
+    metadata: {
+      graphId,
+      nodeId,
+      treatmentName,
+      focusDurationMs,
+      companyId,
+      contextCategory: metadata?.contextCategory,
+      nodeDegree: metadata?.nodeDegree, // number of connections
+      isHighlighted: metadata?.isHighlighted
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track knowledge graph zoom and navigation patterns
+ */
+export function trackKnowledgeGraphZoomNavigation(
+  graphId: string,
+  navigationType: KnowledgeGraphInteractionType,
+  zoomLevel: number,
+  visibleNodes: number,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.KNOWLEDGE_ZOOM, {
+    sessionId: sessionId || sessionId,
+    metadata: {
+      graphId,
+      navigationType,
+      zoomLevel,
+      visibleNodes,
+      centerNodeId: metadata?.centerNodeId,
+      visibleRelationships: metadata?.visibleRelationships,
+      navigationSequence: metadata?.navigationSequence
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track ad format engagement metrics
+ */
+export function trackFormatEngagement(
+  adId: string,
+  formatType: string,
+  engagementType: string,
+  engagementDurationMs: number,
+  questionType?: string,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.FORMAT_ENGAGEMENT, {
+    sessionId: sessionId || sessionId,
+    adId,
+    metadata: {
+      formatType,
+      engagementType,
+      engagementDurationMs,
+      questionType,
+      interactiveElements: metadata?.interactiveElements,
+      userInteractions: metadata?.userInteractions,
+      engagementDepth: metadata?.engagementDepth
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track ad format completion rates
+ */
+export function trackFormatCompletion(
+  adId: string,
+  formatType: string,
+  completionRate: number,
+  totalDurationMs: number,
+  questionType?: string,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.FORMAT_COMPLETION, {
+    sessionId: sessionId || sessionId,
+    adId,
+    metadata: {
+      formatType,
+      completionRate,
+      totalDurationMs,
+      questionType,
+      abandonment: metadata?.abandonment,
+      abandonmentStep: metadata?.abandonmentStep,
+      completionTimestamp: Date.now()
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track correlation between ad format and question type
+ */
+export function trackFormatQuestionCorrelation(
+  adId: string,
+  formatType: string,
+  questionType: string,
+  correlationScore: number,
+  engagementRate: number,
+  sessionId?: string,
+  metadata?: Record<string, any>
+): void {
+  const event = createEvent(AnalyticsEventType.QUESTION_TYPE_CORRELATION, {
+    sessionId: sessionId || sessionId,
+    adId,
+    metadata: {
+      formatType,
+      questionType,
+      correlationScore,
+      engagementRate,
+      medicalSpecialty: metadata?.medicalSpecialty,
+      demographicData: metadata?.demographicData,
+      completionRate: metadata?.completionRate
+    }
+  });
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
  * Dispatch an analytics event to the store
  */
 export function dispatchAnalyticsEvent(event: AnalyticsEvent): void {
@@ -652,5 +963,15 @@ export default {
   trackKnowledgeGraphRelationshipInteraction,
   trackKnowledgeGraphNavigation,
   trackKnowledgeGraphEnd,
-  trackPharmaAffiliationsViewed
+  trackPharmaAffiliationsViewed,
+  trackMicrosimulationStart,
+  trackMicrosimulationStep,
+  trackMicrosimulationDecision,
+  trackMicrosimulationContentView,
+  trackMicrosimulationComplete,
+  trackKnowledgeTreatmentFocus,
+  trackKnowledgeGraphZoomNavigation,
+  trackFormatEngagement,
+  trackFormatCompletion,
+  trackFormatQuestionCorrelation
 }; 
