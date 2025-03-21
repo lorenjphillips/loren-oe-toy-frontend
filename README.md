@@ -2,6 +2,59 @@
 
 A comprehensive platform for delivering tailored pharmaceutical advertising to healthcare professionals with integrated analytics and decision support.
 
+## Quick Start Guide
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp .env.local.example .env.local
+   # Edit .env.local and add your API keys
+   ```
+
+3. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open in browser**
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Documentation
+
+- [Deployment Guide](./DEPLOYMENT.md) - Instructions for deploying to Vercel
+- [Testing Strategy](./TESTING.md) - Comprehensive testing approach and guidelines
+- [Ad System Documentation](./AD_SYSTEM.md) - Details about the ad delivery system
+- [Implementation Roadmap](./IMPLEMENATION.md) - Technical implementation plan
+- [Layout Documentation](./LAYOUT.md) - Frontend layout design
+
+## Project Structure
+
+```
+openevidence-ad-platform/
+├── app/                    # Next.js application routes
+├── components/             # React components
+│   ├── ads/                # Ad-related components
+│   ├── analytics/          # Analytics visualization components
+│   └── ui/                 # Common UI components
+├── services/               # Backend services
+│   ├── adService.ts        # Ad delivery service
+│   ├── classifierService.ts # Question classification service
+│   └── analyticsService.ts # Analytics collection service
+├── data/                   # Data models and repositories
+├── types/                  # TypeScript type definitions
+└── public/                 # Static assets
+```
+
 ## Project Status
 
 ### Completed Phases
@@ -11,6 +64,19 @@ A comprehensive platform for delivering tailored pharmaceutical advertising to h
 
 ### Current Phase
 - **Phase 4: Innovation Layer** - Implementing lightweight versions of clinical decision support and ethical AI guardrails
+
+## Technologies Used
+
+- **Frontend Framework**: Next.js 14
+- **UI Library**: React 18
+- **Styling**: TailwindCSS
+- **Data Visualization**: Recharts, D3.js
+- **State Management**: React Context API
+- **API Integration**: Axios
+- **Statistical Analysis**: jStat
+- **PDF Generation**: @react-pdf/renderer
+- **TypeScript**: For type safety
+- **Testing**: Jest and React Testing Library (planned)
 
 ## Features
 
@@ -83,74 +149,6 @@ A comprehensive platform for delivering tailored pharmaceutical advertising to h
 - Cross-platform synchronization
 - Collaborative filtering recommendation system
 - Integration with electronic health record systems
-
-## Getting Started
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Usage
-
-### Comparing Categories
-```typescript
-import { ComparisonService } from '@/services/analytics/comparison';
-
-const comparisonService = new ComparisonService();
-const results = comparisonService.compareCategoryPerformance({
-  categoryA: {
-    engagement: { value: 0.45, sampleSize: 1000 },
-    retention: { value: 0.75, sampleSize: 1000 },
-    conversion: { value: 0.25, sampleSize: 1000 },
-    satisfaction: { value: 0.85, sampleSize: 1000 }
-  },
-  categoryB: {
-    // ... similar metrics
-  }
-});
-```
-
-### Analyzing Time Trends
-```typescript
-const trends = comparisonService.calculateTimeTrends([
-  { value: 0.45, sampleSize: 1000 },
-  { value: 0.48, sampleSize: 1000 },
-  { value: 0.52, sampleSize: 1000 }
-]);
-```
-
-### Segmentation
-```typescript
-import { SegmentationService } from '@/services/analytics/segmentation';
-
-const segmentationService = new SegmentationService();
-const filteredData = segmentationService.applySegmentation(data, {
-  timeRange: {
-    start: new Date('2023-01-01'),
-    end: new Date('2023-12-31')
-  },
-  categories: ['Oncology', 'Cardiology'],
-  formats: ['microsimulation']
-});
-```
-
-## Architecture
-
-The framework is built with:
-- Next.js for the frontend framework
-- TypeScript for type safety
-- Recharts for data visualization
-- jStat for statistical computations
-- Zod for data validation
-- TailwindCSS for styling
 
 ## Contributing
 
