@@ -28,6 +28,16 @@ import {
   getSpecializedTemplateSettings 
 } from '../services/adTemplateSelector';
 
+// Import analytics services
+import analyticsService, { 
+  AnalyticsEventType, 
+  VisibilityState,
+  createVisibilityTracker,
+  initAdPerformanceMeasurement,
+  measureAdPerformance
+} from '../services/analytics';
+import analyticsStore from '../store/analyticsStore';
+
 // Import transition utilities
 import { 
   pulse, 
@@ -71,7 +81,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   overflow: 'hidden',
   '&:hover': {
     transform: 'translateY(-2px)',
-    boxShadow: theme.shadows[4],
+    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
   },
   ...getOptimizedStyles(['transform', 'opacity']),
 }));
@@ -124,6 +134,7 @@ const LoadingOverlay = styled(Box)(({ theme }) => ({
  * - Tracks view time and impressions
  * - Handles transitions between states
  * - Provides professional animations for a polished user experience
+ * - Comprehensive analytics tracking
  */
 export default function SmartAdDisplay({ 
   question, 
@@ -149,11 +160,23 @@ export default function SmartAdDisplay({
   
   // Reference to track component mounted state
   const isMounted = useRef(true);
+  const adRef = useRef<HTMLDivElement>(null);
+  const visibilityObserver = useRef<IntersectionObserver | null>(null);
   const theme = useTheme();
+  const renderStartTime = useRef<number | null>(null);
 
   // Add state to track selected template and settings
   const [templateType, setTemplateType] = useState<AdTemplateType>(AdTemplateType.DEFAULT);
   const [templateSettings, setTemplateSettings] = useState<Record<string, any>>({});
+
+  // Initialize analytics store on mount
+  useEffect(() => {
+    analyticsStore.initStore();
+    
+    return () => {
+      analyticsStore.cleanupStore();
+    };
+  }, []);
 
   // Function to classify the question and find appropriate ads
   const classifyAndGetAds = async (questionText: string) => {
@@ -161,6 +184,9 @@ export default function SmartAdDisplay({
     
     setIsClassifying(true);
     setError(null);
+
+    // Performance measurement
+    renderStartTime.current = initAdPerformanceMeasurement('classification');
     
     try {
       // Step 1: Classify the question
@@ -195,8 +221,14 @@ export default function SmartAdDisplay({
           const newImpressionId = uuidv4();
           setImpressionId(newImpressionId);
         
-          // Track impression start time
+          // Track impression start time and send analytics event
           setViewStartTime(Date.now());
+          
+          // Track impression via analytics service
+          analyticsService.trackImpressionStart(
+            adResponse.content[0],
+            enhancedMapping.overallConfidence
+          );
           
           // Trigger transition in
           setTransitionIn(true);
@@ -208,6 +240,12 @@ export default function SmartAdDisplay({
             confidenceScore: enhancedMapping.overallConfidence,
             impressionId: newImpressionId
           });
+
+          // Track render performance if we started timing
+          if (renderStartTime.current) {
+            measureAdPerformance('ad_display', renderStartTime.current);
+            renderStartTime.current = null;
+          }
         }, settings.durationShort);
       } else {
         // No suitable ads found
@@ -217,6 +255,14 @@ export default function SmartAdDisplay({
       console.error('Error in ad processing:', err);
       if (isMounted.current) {
         setError('Failed to load relevant content');
+        
+        // Track error event
+        analyticsService.createEvent(AnalyticsEventType.AD_ERROR, {
+          metadata: {
+            error: err instanceof Error ? err.message : 'Unknown error',
+            question
+          }
+        });
       }
     } finally {
       if (isMounted.current) {
@@ -229,6 +275,9 @@ export default function SmartAdDisplay({
   const trackViewTime = () => {
     if (viewStartTime && adContent && impressionId) {
       const viewTimeMs = Date.now() - viewStartTime;
+      
+      // Track impression end via analytics service
+      analyticsService.trackImpressionEnd(impressionId, adContent.id, viewTimeMs);
       
       // Call the callback if provided
       if (onAdImpression) {
@@ -264,6 +313,12 @@ export default function SmartAdDisplay({
     return () => {
       isMounted.current = false;
       trackViewTime();
+      
+      // Cleanup visibility observer
+      if (visibilityObserver.current) {
+        visibilityObserver.current.disconnect();
+        visibilityObserver.current = null;
+      }
     };
   }, []);
 
@@ -300,6 +355,34 @@ export default function SmartAdDisplay({
       setTemplateSettings(settings);
     }
   }, [adContent, mappingResult]);
+
+  // Setup intersection observer to track ad visibility
+  useEffect(() => {
+    // Only set up visibility tracking if we have content and a reference
+    if (adContent && adRef.current) {
+      // Cleanup previous observer
+      if (visibilityObserver.current) {
+        visibilityObserver.current.disconnect();
+      }
+      
+      // Create new visibility tracker
+      visibilityObserver.current = createVisibilityTracker(
+        adRef.current,
+        adContent.id,
+        (visible, percentage) => {
+          // Custom handling for visibility changes can be added here if needed
+        }
+      );
+    }
+    
+    return () => {
+      // Cleanup on dependency changes
+      if (visibilityObserver.current) {
+        visibilityObserver.current.disconnect();
+        visibilityObserver.current = null;
+      }
+    };
+  }, [adContent]);
 
   // Don't render anything if not loading and no ad content
   if (!isLoading && !adContent) return null;
@@ -374,15 +457,39 @@ export default function SmartAdDisplay({
   const accentColor = adContent.company.secondaryColor || theme.palette.primary.main;
   const borderColor = displaySettings.borderColor || accentColor;
 
+  // Track hover events
+  const handleMouseEnter = () => {
+    if (adContent) {
+      analyticsService.trackHover(adContent.id, 'ad_container');
+    }
+  };
+
+  // Track click events
+  const handleAdClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (adContent) {
+      const target = event.currentTarget.getAttribute('data-target') || 'ad_container';
+      const rect = event.currentTarget.getBoundingClientRect();
+      const position = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+      
+      analyticsService.trackClick(adContent.id, target, 'click', position);
+    }
+  };
+
   // Render different template based on type
   const renderAdTemplate = () => {
     if (!adContent) return null;
     
     const commonProps = {
       adContent,
-      onCTAClick: (adId) => {
+      onCTAClick: (adId: string) => {
         // Handle CTA click
         console.log(`Ad CTA clicked: ${adId}`);
+        
+        // Track CTA click via analytics service
+        analyticsService.trackCTAClick(adId, adContent.company.id, impressionId || '');
         
         // Send tracking data to server
         axios.post('/api/ads/click', {
@@ -438,8 +545,14 @@ export default function SmartAdDisplay({
   };
 
   return (
-    <Fade in={transitionIn} timeout={settings.durationMedium}>
-      <Box sx={{ position: 'relative' }}>
+    <Fade in={transitionIn} timeout={settings.durationShort}>
+      <Box 
+        sx={{ position: 'relative' }}
+        ref={adRef}
+        onMouseEnter={handleMouseEnter}
+        onClick={handleAdClick}
+        data-target="ad_container"
+      >
         {isClassifying && (
           <LoadingOverlay>
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
