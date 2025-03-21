@@ -20,6 +20,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  SelectChangeEvent,
   Slider,
   Stack,
   Table,
@@ -136,7 +137,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
     setCalculatedResults(calculatedResults.filter(result => result.id !== id));
   };
   
-  const handlePresetChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handlePresetChange = (event: SelectChangeEvent) => {
     const presetIndex = Number(event.target.value);
     if (presetIndex >= 0) {
       const preset = INITIATIVE_PRESETS[presetIndex];
@@ -147,7 +148,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
     }
   };
   
-  const handleInitiativeUpdate = (id: string, field: string, value: any) => {
+  const handleInitiativeUpdate = (id: string, field: keyof Initiative, value: string | number) => {
     setInitiatives(initiatives.map(initiative => 
       initiative.id === id ? { ...initiative, [field]: value } : initiative
     ));
@@ -251,7 +252,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
                       labelId="preset-select-label"
                       value={selectedPreset}
                       label="Quick Preset"
-                      onChange={handlePresetChange as any}
+                      onChange={handlePresetChange}
                     >
                       <MenuItem value="">
                         <em>Custom Initiative</em>
@@ -267,7 +268,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
                   <TextField
                     label="Initiative Name"
                     value={newInitiativeName}
-                    onChange={(e) => setNewInitiativeName(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewInitiativeName(e.target.value)}
                     fullWidth
                   />
                   
@@ -277,7 +278,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
                     </Typography>
                     <TextField
                       value={newInitiativeCost}
-                      onChange={(e) => setNewInitiativeCost(Number(e.target.value))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewInitiativeCost(Number(e.target.value))}
                       type="number"
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
@@ -292,7 +293,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
                     </Typography>
                     <Slider
                       value={newInitiativeTimeframe}
-                      onChange={(_, value) => setNewInitiativeTimeframe(value as number)}
+                      onChange={(_event: Event, value: number | number[]) => setNewInitiativeTimeframe(value as number)}
                       min={4}
                       max={52}
                       step={1}
@@ -353,7 +354,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
                             <TableCell>
                               <TextField
                                 value={initiative.name}
-                                onChange={(e) => handleInitiativeUpdate(initiative.id, 'name', e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInitiativeUpdate(initiative.id, 'name', e.target.value)}
                                 variant="standard"
                                 fullWidth
                               />
@@ -361,7 +362,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
                             <TableCell align="right">
                               <TextField
                                 value={initiative.cost}
-                                onChange={(e) => handleInitiativeUpdate(initiative.id, 'cost', Number(e.target.value))}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInitiativeUpdate(initiative.id, 'cost', Number(e.target.value))}
                                 type="number"
                                 variant="standard"
                                 InputProps={{
@@ -372,7 +373,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
                             <TableCell align="right">
                               <TextField
                                 value={initiative.timeframe}
-                                onChange={(e) => handleInitiativeUpdate(initiative.id, 'timeframe', Number(e.target.value))}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInitiativeUpdate(initiative.id, 'timeframe', Number(e.target.value))}
                                 type="number"
                                 variant="standard"
                                 InputProps={{

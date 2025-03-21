@@ -302,7 +302,7 @@ export default function CompetitivePosition({ companyId }: CompetitivePositionPr
       try {
         const { dateRange, filters } = dashboardContext;
         const summary = await executiveInsightsService.generateExecutiveInsights(
-          companyId || dashboardContext.selectedCompany,
+          companyId || dashboardContext.selectedCompany || '',
           dateRange,
           filters
         );
@@ -335,10 +335,9 @@ export default function CompetitivePosition({ companyId }: CompetitivePositionPr
       : executiveSummary.competitivePosition.filter(cp => cp.category === activeCategory)
     : [];
   
-  const handleCategoryChange = (event: React.SyntheticEvent, newCategory: string) => {
-    if (newCategory) {
-      setActiveCategory(newCategory);
-    }
+  // Using 'all' as default value if newCategory is null
+  const handleCategoryChange = (_event: React.SyntheticEvent, newCategory: string) => {
+    setActiveCategory(newCategory);
   };
   
   // Calculate competitive summary

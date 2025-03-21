@@ -16,6 +16,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  SelectChangeEvent,
   Skeleton,
   Stack,
   ToggleButton,
@@ -71,14 +72,14 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
         
         // Fetch category opportunity indices
         const categoryData = await executiveInsightsService.calculateCategoryOpportunityIndices(
-          companyId || dashboardContext.selectedCompany,
+          companyId || dashboardContext.selectedCompany || '',
           dateRange
         );
         setCategoryOpportunities(categoryData);
         
         // Fetch executive summary for market opportunities
         const summary = await executiveInsightsService.generateExecutiveInsights(
-          companyId || dashboardContext.selectedCompany,
+          companyId || dashboardContext.selectedCompany || '',
           dateRange,
           {}
         );
@@ -108,7 +109,7 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
     }
   };
   
-  const handleCategoryFilterChange = (event: any) => {
+  const handleCategoryFilterChange = (event: SelectChangeEvent) => {
     setFilterCategory(event.target.value);
   };
   
@@ -202,23 +203,29 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
   // Render D3 bubble chart
   const renderBubbleChart = () => {
     const bubbleData = generateBubbleData();
-    if (!bubbleData.length) return;
+    if (!bubbleData.length || !bubbleChartRef.current) return;
     
     const svg = d3.select(bubbleChartRef.current);
-    const tooltip = d3.select(tooltipRef.current);
+    const tooltipElement = tooltipRef.current;
+    if (!tooltipElement) return;
+    
+    const tooltip = d3.select(tooltipElement);
     
     // Clear previous chart
     svg.selectAll('*').remove();
     
     // Get dimensions
-    const width = bubbleChartRef.current!.clientWidth;
-    const height = bubbleChartRef.current!.clientHeight || 500;
+    const width = bubbleChartRef.current.clientWidth;
+    const height = bubbleChartRef.current.clientHeight || 500;
     
     // Create a force simulation
-    const simulation = d3.forceSimulation(bubbleData as any)
+    const simulation = d3.forceSimulation(bubbleData as d3.SimulationNodeDatum[])
       .force('x', d3.forceX(width / 2).strength(0.05))
       .force('y', d3.forceY(height / 2).strength(0.05))
-      .force('collide', d3.forceCollide().radius((d: any) => d.radius + 2).iterations(2))
+      .force('collide', d3.forceCollide().radius((d: any) => {
+        const node = d as BubbleDataPoint;
+        return node.radius + 2;
+      }).iterations(2))
       .force('charge', d3.forceManyBody().strength(-50));
     
     // Create circles for each data point
@@ -227,12 +234,12 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
       .enter()
       .append('circle')
       .attr('class', 'bubble')
-      .attr('r', d => d.radius)
-      .attr('fill', d => d.color)
+      .attr('r', (d: BubbleDataPoint) => d.radius)
+      .attr('fill', (d: BubbleDataPoint) => d.color)
       .attr('opacity', 0.8)
       .attr('stroke', '#fff')
       .attr('stroke-width', 1)
-      .on('mouseover', function(event, d) {
+      .on('mouseover', function(event: MouseEvent, d: BubbleDataPoint) {
         d3.select(this)
           .attr('stroke', '#000')
           .attr('stroke-width', 2)
@@ -263,22 +270,22 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
       .enter()
       .append('text')
       .attr('class', 'label')
-      .text(d => d.name)
+      .text((d: BubbleDataPoint) => d.name)
       .attr('text-anchor', 'middle')
       .attr('fill', '#fff')
-      .attr('font-size', d => Math.min(d.radius / 3, 12) + 'px')
+      .attr('font-size', (d: BubbleDataPoint) => Math.min(d.radius / 3, 12) + 'px')
       .attr('pointer-events', 'none')
       .attr('dy', '0.35em');
     
     // Update positions on simulation tick
     simulation.on('tick', () => {
       circles
-        .attr('cx', (d: any) => Math.max(d.radius, Math.min(width - d.radius, d.x)))
-        .attr('cy', (d: any) => Math.max(d.radius, Math.min(height - d.radius, d.y)));
+        .attr('cx', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(width - d.radius, d.x)))
+        .attr('cy', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(height - d.radius, d.y)));
       
       labels
-        .attr('x', (d: any) => Math.max(d.radius, Math.min(width - d.radius, d.x)))
-        .attr('y', (d: any) => Math.max(d.radius, Math.min(height - d.radius, d.y)));
+        .attr('x', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(width - d.radius, d.x)))
+        .attr('y', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(height - d.radius, d.y)));
     });
   };
   
