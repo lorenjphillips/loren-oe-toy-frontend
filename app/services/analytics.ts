@@ -48,6 +48,21 @@ export enum VisibilityState {
 }
 
 /**
+ * Knowledge graph interaction types for analytics
+ */
+export enum KnowledgeGraphInteractionType {
+  NODE_CLICK = 'node_click',
+  EDGE_CLICK = 'edge_click',
+  EXPAND = 'expand',
+  COLLAPSE = 'collapse',
+  ZOOM = 'zoom',
+  PAN = 'pan',
+  FILTER = 'filter',
+  SEARCH = 'search',
+  RESET = 'reset'
+}
+
+/**
  * Interface for analytics events
  */
 export interface AnalyticsEvent {
@@ -308,6 +323,197 @@ export function trackScrollOutOfView(
 }
 
 /**
+ * Track a knowledge graph visualization being shown
+ */
+export function trackKnowledgeGraphVisualization(
+  graphId: string,
+  questionContext: string,
+  graphSize: { nodes: number, relationships: number },
+  pharmaCompanies: string[],
+  sessionId: string
+): string {
+  const eventId = uuidv4();
+  
+  const event: AnalyticsEvent = {
+    id: eventId,
+    type: AnalyticsEventType.IMPRESSION_START,
+    timestamp: Date.now(),
+    sessionId,
+    target: 'knowledge_graph',
+    metadata: {
+      graphId,
+      questionContext,
+      nodeCount: graphSize.nodes,
+      relationshipCount: graphSize.relationships,
+      pharmaCompanies,
+      contentType: 'knowledge_graph'
+    }
+  };
+  
+  dispatchAnalyticsEvent(event);
+  
+  return eventId;
+}
+
+/**
+ * Track an interaction with a knowledge graph node
+ */
+export function trackKnowledgeGraphNodeInteraction(
+  graphId: string,
+  nodeId: string,
+  nodeType: string,
+  interactionType: KnowledgeGraphInteractionType,
+  sessionId: string,
+  position?: { x: number, y: number }
+): void {
+  const event: AnalyticsEvent = {
+    id: uuidv4(),
+    type: AnalyticsEventType.CLICK,
+    timestamp: Date.now(),
+    sessionId,
+    target: 'knowledge_graph_node',
+    interactionType: interactionType,
+    position,
+    metadata: {
+      graphId,
+      nodeId,
+      nodeType,
+      interactionType
+    }
+  };
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track an interaction with a knowledge graph relationship
+ */
+export function trackKnowledgeGraphRelationshipInteraction(
+  graphId: string,
+  relationshipId: string,
+  relationshipType: string,
+  sourceNodeId: string, 
+  targetNodeId: string,
+  interactionType: KnowledgeGraphInteractionType,
+  sessionId: string,
+  position?: { x: number, y: number }
+): void {
+  const event: AnalyticsEvent = {
+    id: uuidv4(),
+    type: AnalyticsEventType.CLICK,
+    timestamp: Date.now(),
+    sessionId,
+    target: 'knowledge_graph_relationship',
+    interactionType: interactionType,
+    position,
+    metadata: {
+      graphId,
+      relationshipId,
+      relationshipType,
+      sourceNodeId,
+      targetNodeId,
+      interactionType
+    }
+  };
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track a navigation event within a knowledge graph
+ */
+export function trackKnowledgeGraphNavigation(
+  graphId: string,
+  navigationType: 'zoom' | 'pan' | 'reset' | 'filter',
+  detail: Record<string, any>,
+  sessionId: string
+): void {
+  const event: AnalyticsEvent = {
+    id: uuidv4(),
+    type: AnalyticsEventType.CLICK,
+    timestamp: Date.now(),
+    sessionId,
+    target: 'knowledge_graph_navigation',
+    interactionType: navigationType,
+    metadata: {
+      graphId,
+      navigationType,
+      ...detail
+    }
+  };
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track the end of a knowledge graph visualization session
+ */
+export function trackKnowledgeGraphEnd(
+  graphId: string,
+  impressionId: string,
+  durationMs: number,
+  interactionStats: {
+    nodeClicks: number,
+    relationshipClicks: number,
+    navigationEvents: number,
+    expandEvents: number,
+    totalInteractions: number
+  },
+  sessionId: string
+): void {
+  // Track the end of the impression
+  trackImpressionEnd(impressionId, graphId, durationMs);
+  
+  // Track additional knowledge graph specific metrics
+  const event: AnalyticsEvent = {
+    id: uuidv4(),
+    type: AnalyticsEventType.IMPRESSION_END,
+    timestamp: Date.now(),
+    sessionId,
+    target: 'knowledge_graph',
+    durationMs,
+    metadata: {
+      graphId,
+      impressionId,
+      interactionStats,
+      avgInteractionTimeMs: interactionStats.totalInteractions > 0 
+        ? durationMs / interactionStats.totalInteractions 
+        : 0,
+      contentType: 'knowledge_graph'
+    }
+  };
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
+ * Track pharma affiliations displayed in a knowledge graph
+ */
+export function trackPharmaAffiliationsViewed(
+  graphId: string,
+  pharmaCompanies: { id: string, name: string }[],
+  treatmentCount: number,
+  sessionId: string
+): void {
+  const event: AnalyticsEvent = {
+    id: uuidv4(),
+    type: AnalyticsEventType.IMPRESSION_START,
+    timestamp: Date.now(),
+    sessionId,
+    target: 'pharma_affiliations',
+    metadata: {
+      graphId,
+      pharmaCompanies: pharmaCompanies.map(p => p.id),
+      pharmaCompanyNames: pharmaCompanies.map(p => p.name),
+      treatmentCount,
+      contentType: 'pharma_affiliations'
+    }
+  };
+  
+  dispatchAnalyticsEvent(event);
+}
+
+/**
  * Dispatch an analytics event to the store
  */
 export function dispatchAnalyticsEvent(event: AnalyticsEvent): void {
@@ -440,5 +646,11 @@ export default {
   initAdPerformanceMeasurement,
   configureAnalytics,
   createEvent,
-  dispatchAnalyticsEvent
+  dispatchAnalyticsEvent,
+  trackKnowledgeGraphVisualization,
+  trackKnowledgeGraphNodeInteraction,
+  trackKnowledgeGraphRelationshipInteraction,
+  trackKnowledgeGraphNavigation,
+  trackKnowledgeGraphEnd,
+  trackPharmaAffiliationsViewed
 }; 

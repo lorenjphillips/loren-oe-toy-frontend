@@ -6,6 +6,10 @@ import { analyzeQuestionContext, ContextualRelevanceResult } from './contextualR
 import { enhanceClassification, EnhancedClassificationResult } from './enhancedClassifier';
 import { adaptAdContent, AdaptedContentResult, ContentAdaptationOptions } from './contentAdaptation';
 import { PharmaMappingResult, mapQuestionToCompanies } from './adMapping';
+import * as GraphGenerator from './graphGenerator';
+import { KnowledgeGraph, KnowledgeGraphFilters } from '../models/knowledgeGraph';
+import * as AnalyticsService from './analytics';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Enhanced ad selection result
@@ -47,6 +51,213 @@ const DEFAULT_ENHANCED_OPTIONS: EnhancedAdSelectionOptions = {
   priorityMinimum: 5,
   boostAmount: 2 // Boost priority by up to 2 points
 };
+
+/**
+ * Knowledge graph display options during ad wait times
+ */
+export interface KnowledgeGraphAdOptions {
+  questionText: string;
+  classification: MedicalClassification;
+  advertisingCompanyId?: string;
+  waitTimeMs: number;
+  sessionId?: string;
+  userId?: string;
+}
+
+/**
+ * Track interaction with a knowledge graph
+ */
+export function trackKnowledgeGraphInteraction(
+  graphId: string,
+  interactionType: 'view' | 'expand' | 'explore' | 'click',
+  nodeId?: string,
+  relationshipId?: string,
+  sessionId?: string,
+  userId?: string
+): string {
+  const eventId = AnalyticsService.createEvent(
+    AnalyticsService.AnalyticsEventType.CLICK,
+    {
+      target: `knowledge_graph_${interactionType}`,
+      metadata: {
+        graphId,
+        nodeId,
+        relationshipId,
+        interactionType,
+        userId
+      },
+      sessionId
+    }
+  ).id;
+  
+  AnalyticsService.dispatchAnalyticsEvent({
+    id: eventId,
+    type: AnalyticsService.AnalyticsEventType.CLICK,
+    timestamp: Date.now(),
+    sessionId: sessionId || 'unknown',
+    target: `knowledge_graph_${interactionType}`,
+    interactionType,
+    metadata: {
+      graphId,
+      nodeId,
+      relationshipId,
+      interactionType,
+      userId
+    }
+  });
+  
+  return eventId;
+}
+
+/**
+ * Generate a knowledge graph suitable for display during ad wait times
+ */
+export async function generateWaitTimeKnowledgeGraph(
+  options: KnowledgeGraphAdOptions
+): Promise<{
+  graph: KnowledgeGraph,
+  recommendedWaitTimeMs: number,
+  trackingId: string
+}> {
+  try {
+    // Generate the knowledge graph
+    const graph = await GraphGenerator.generateAdWaitKnowledgeGraph(
+      options.questionText,
+      options.classification,
+      options.advertisingCompanyId
+    );
+    
+    // Calculate recommended wait time based on graph complexity
+    // More complex graphs warrant longer display times
+    const nodeCount = graph.nodes.length;
+    const relationshipCount = graph.relationships.length;
+    const complexity = (nodeCount * 2) + relationshipCount;
+    
+    // Base wait time is 5-15 seconds, adjusted for complexity
+    const baseWaitTimeMs = 5000;
+    const complexityFactor = Math.min(1, complexity / 50); // Scale to max 1
+    const recommendedWaitTimeMs = baseWaitTimeMs + (complexityFactor * 10000);
+    
+    // Track the impression
+    const trackingId = AnalyticsService.createEvent(
+      AnalyticsService.AnalyticsEventType.IMPRESSION_START,
+      {
+        sessionId: options.sessionId,
+        metadata: {
+          graphId: graph.id,
+          nodeCount,
+          relationshipCount,
+          complexity,
+          advertisingCompanyId: options.advertisingCompanyId,
+          questionCategory: options.classification.primaryCategory.name,
+          recommendedWaitTimeMs,
+          userId: options.userId
+        }
+      }
+    ).id;
+    
+    // Dispatch the analytics event
+    AnalyticsService.dispatchAnalyticsEvent({
+      id: trackingId,
+      type: AnalyticsService.AnalyticsEventType.IMPRESSION_START,
+      timestamp: Date.now(),
+      sessionId: options.sessionId || 'unknown',
+      metadata: {
+        graphId: graph.id,
+        nodeCount,
+        relationshipCount,
+        complexity,
+        advertisingCompanyId: options.advertisingCompanyId,
+        questionCategory: options.classification.primaryCategory.name,
+        recommendedWaitTimeMs,
+        userId: options.userId
+      }
+    });
+    
+    return {
+      graph,
+      recommendedWaitTimeMs,
+      trackingId
+    };
+  } catch (error) {
+    console.error('Error generating wait time knowledge graph:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if a knowledge graph should be shown during wait time
+ * Based on question complexity, loading time, and user preferences
+ */
+export function shouldShowKnowledgeGraph(
+  classification: MedicalClassification,
+  estimatedWaitTimeMs: number,
+  userPreferences: any = {}
+): boolean {
+  // Don't show for very short wait times
+  if (estimatedWaitTimeMs < 3000) {
+    return false;
+  }
+  
+  // Check user preferences
+  if (userPreferences.disableKnowledgeGraphs) {
+    return false;
+  }
+  
+  // Check confidence in classification
+  if (classification.primaryCategory.confidence < 0.6 || 
+      classification.subcategory.confidence < 0.5) {
+    return false;
+  }
+  
+  // Higher likelihood for complex medical categories
+  const complexCategories = [
+    'oncology', 'cardiology', 'neurology', 'endocrinology'
+  ];
+  
+  if (complexCategories.includes(classification.primaryCategory.id)) {
+    return true;
+  }
+  
+  // For medium wait times, show with 70% probability
+  if (estimatedWaitTimeMs > 5000) {
+    return Math.random() < 0.7;
+  }
+  
+  // Default: show with 50% probability
+  return Math.random() < 0.5;
+}
+
+/**
+ * End knowledge graph session and track metrics
+ */
+export function endKnowledgeGraphSession(
+  trackingId: string,
+  graphId: string,
+  durationMs: number,
+  interactionCount: number,
+  sessionId?: string
+): void {
+  AnalyticsService.trackImpressionEnd(
+    trackingId,
+    graphId,
+    durationMs
+  );
+  
+  // Track additional metrics
+  AnalyticsService.dispatchAnalyticsEvent({
+    id: uuidv4(),
+    type: AnalyticsService.AnalyticsEventType.IMPRESSION_END,
+    timestamp: Date.now(),
+    sessionId: sessionId || 'unknown',
+    metadata: {
+      graphId,
+      durationMs,
+      interactionCount,
+      averageTimePerInteraction: interactionCount > 0 ? durationMs / interactionCount : 0
+    }
+  });
+}
 
 /**
  * Service for enhanced contextual ad selection
