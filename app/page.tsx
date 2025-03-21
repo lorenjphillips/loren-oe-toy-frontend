@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Container, TextField, Button, Typography, Paper, List, CircularProgress, Box, AppBar, Toolbar } from '@mui/material';
 import { styled } from '@mui/system';
+import AdDisplay from '../components/AdDisplay';
+import { v4 as uuidv4 } from 'uuid';
 
 interface HistoryItem {
   role: string;
@@ -34,6 +36,11 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [answer, setAnswer] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [userId] = useState<string>(() => {
+    // Generate a unique user ID for this session
+    return uuidv4();
+  });
+  const [questionId, setQuestionId] = useState<string>('');
 
   const scrollToBottom = () => {
     window.scrollTo({
@@ -45,6 +52,10 @@ export default function Home() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
+
+    // Generate a new question ID for tracking purposes
+    const newQuestionId = uuidv4();
+    setQuestionId(newQuestionId);
 
     scrollToBottom();
 
@@ -65,6 +76,7 @@ export default function Home() {
     setHistory([]);
     setAnswer('');
     setQuestion('');
+    setQuestionId('');
     scrollToBottom();
   };
 
@@ -88,6 +100,16 @@ export default function Home() {
       </FixedAppBar>
 
       <Container maxWidth="md" style={{ marginTop: '120px', fontFamily: 'Roboto, sans-serif', marginBottom: '250px' }}>
+        {/* Show the ad at the top of the conversation */}
+        {history.length > 0 && question.trim() !== '' && (
+          <AdDisplay 
+            question={question} 
+            history={history}
+            userId={userId}
+            questionId={questionId}
+          />
+        )}
+
         {history.length > 0 && (
           <List>
             {history.map((item, index) => (
