@@ -1,202 +1,273 @@
 /**
- * Interfaces for pharma company category mapping
+ * Pharmaceutical Company and Category Data
+ * 
+ * Provides data structures for pharmaceutical companies and medical treatment categories.
  */
 
-/**
- * Treatment area for a pharmaceutical company
- */
-export interface PharmaTreatmentArea {
-  id: string;                // Unique identifier for the treatment area
-  category: string;          // Main medical category (e.g., "oncology")
-  subcategories: string[];   // Specific subcategories (e.g., ["breast_cancer", "lung_cancer"])
-  keywords: string[];        // Related keywords for matching
-  flagship_medications: string[]; // Key medications in this treatment area
-  priority: number;          // Priority ranking (higher = more important for company)
-}
-
-/**
- * Pharmaceutical company profile
- */
+// Pharma company interface
 export interface PharmaCompany {
-  id: string;                // Company identifier
-  name: string;              // Company name
-  logo_url?: string;         // URL to company logo
-  treatment_areas: PharmaTreatmentArea[]; // Treatment areas for this company
-  keywords: string[];        // Company-specific keywords
+  id: string;
+  name: string;
+  logo: string;
+  primaryColor: string;
+  secondaryColor: string;
+  priorityCategories: string[];
+  description: string;
 }
 
-/**
- * Pharmaceutical company database
- */
+// Medical category interface
+export interface MedicalCategory {
+  id: string;
+  displayName: string;
+  description: string;
+  subcategories: string[];
+  relatedTerms: string[];
+}
+
+// Map of treatment categories
+export const MEDICAL_CATEGORY_MAP: Record<string, MedicalCategory> = {
+  oncology: {
+    id: 'oncology',
+    displayName: 'Oncology',
+    description: 'Cancer treatments and related therapeutics',
+    subcategories: [
+      'Lung Cancer',
+      'Breast Cancer',
+      'Prostate Cancer',
+      'Leukemia',
+      'Immunotherapy',
+      'Targeted Therapy'
+    ],
+    relatedTerms: [
+      'cancer', 'tumor', 'chemotherapy', 'radiation', 'oncologist'
+    ]
+  },
+  immunology: {
+    id: 'immunology',
+    displayName: 'Immunology',
+    description: 'Treatments for autoimmune diseases and immune system disorders',
+    subcategories: [
+      'Rheumatoid Arthritis',
+      'Psoriasis',
+      'Inflammatory Bowel Disease',
+      'Lupus',
+      'Multiple Sclerosis'
+    ],
+    relatedTerms: [
+      'immune', 'autoimmune', 'inflammation', 'biologics', 'antibodies'
+    ]
+  },
+  cardiology: {
+    id: 'cardiology',
+    displayName: 'Cardiology',
+    description: 'Treatments for heart disease and cardiovascular conditions',
+    subcategories: [
+      'Hypertension',
+      'Heart Failure',
+      'Anticoagulation',
+      'Lipid Management',
+      'Arrhythmia'
+    ],
+    relatedTerms: [
+      'heart', 'cardiovascular', 'cholesterol', 'blood pressure', 'stroke'
+    ]
+  },
+  neurology: {
+    id: 'neurology',
+    displayName: 'Neurology',
+    description: 'Treatments for neurological disorders and conditions',
+    subcategories: [
+      'Alzheimer\'s Disease',
+      'Parkinson\'s Disease',
+      'Epilepsy',
+      'Migraine',
+      'Multiple Sclerosis'
+    ],
+    relatedTerms: [
+      'brain', 'nervous system', 'cognitive', 'neural', 'dementia'
+    ]
+  },
+  infectious_disease: {
+    id: 'infectious_disease',
+    displayName: 'Infectious Disease',
+    description: 'Treatments for bacterial, viral, and fungal infections',
+    subcategories: [
+      'Antibiotics',
+      'Antivirals',
+      'Vaccines',
+      'HIV/AIDS',
+      'Hepatitis'
+    ],
+    relatedTerms: [
+      'infection', 'bacteria', 'virus', 'antimicrobial', 'pathogen'
+    ]
+  },
+  endocrinology: {
+    id: 'endocrinology',
+    displayName: 'Endocrinology',
+    description: 'Treatments for hormone-related conditions and metabolic disorders',
+    subcategories: [
+      'Diabetes',
+      'Thyroid Disorders',
+      'Growth Hormone',
+      'Adrenal Disorders',
+      'Metabolic Syndrome'
+    ],
+    relatedTerms: [
+      'hormone', 'insulin', 'thyroid', 'metabolism', 'glucose'
+    ]
+  },
+  respiratory: {
+    id: 'respiratory',
+    displayName: 'Respiratory',
+    description: 'Treatments for respiratory and pulmonary conditions',
+    subcategories: [
+      'Asthma',
+      'COPD',
+      'Pulmonary Fibrosis',
+      'Cystic Fibrosis',
+      'Respiratory Infections'
+    ],
+    relatedTerms: [
+      'lung', 'breathing', 'pulmonary', 'inhaler', 'bronchodilator'
+    ]
+  },
+  rare_disease: {
+    id: 'rare_disease',
+    displayName: 'Rare Disease',
+    description: 'Treatments for rare genetic and orphan diseases',
+    subcategories: [
+      'Genetic Disorders',
+      'Lysosomal Storage Disorders',
+      'Orphan Diseases',
+      'Enzyme Replacement',
+      'Gene Therapy'
+    ],
+    relatedTerms: [
+      'orphan', 'genetic', 'hereditary', 'mutation', 'congenital'
+    ]
+  }
+};
+
+// List of pharmaceutical companies
 export const PHARMA_COMPANIES: PharmaCompany[] = [
   {
-    id: "pfizer",
-    name: "Pfizer",
-    logo_url: "/logos/pfizer.png",
-    keywords: ["pfizer", "pfe", "xeljanz", "ibrance", "prevnar", "xtandi"],
-    treatment_areas: [
-      {
-        id: "pfizer_oncology",
-        category: "oncology",
-        subcategories: ["breast_cancer", "lung_cancer", "prostate_cancer"],
-        keywords: ["breast cancer", "lung cancer", "metastatic", "carcinoma", "ibrance", "xtandi"],
-        flagship_medications: ["Ibrance", "Xtandi", "Xalkori"],
-        priority: 9
-      },
-      {
-        id: "pfizer_immunology",
-        category: "rheumatology",
-        subcategories: ["rheumatoid_arthritis", "psoriatic_arthritis"],
-        keywords: ["rheumatoid arthritis", "psoriatic arthritis", "RA", "joint pain", "autoimmune", "xeljanz"],
-        flagship_medications: ["Xeljanz", "Enbrel"],
-        priority: 8
-      },
-      {
-        id: "pfizer_vaccines",
-        category: "infectious_diseases",
-        subcategories: ["covid19", "pneumonia"],
-        keywords: ["vaccine", "immunization", "covid", "pneumonia", "prevnar"],
-        flagship_medications: ["Prevnar", "Comirnaty"],
-        priority: 7
-      }
-    ]
+    id: 'pfizer',
+    name: 'Pfizer',
+    logo: '/assets/logos/pfizer.svg',
+    primaryColor: '#0093d0',
+    secondaryColor: '#f26649',
+    priorityCategories: ['oncology', 'infectious_disease', 'immunology'],
+    description: 'A global pharmaceutical company focused on developing innovative medicines and vaccines across multiple therapeutic areas.'
   },
-  
   {
-    id: "genentech",
-    name: "Genentech",
-    logo_url: "/logos/genentech.png",
-    keywords: ["genentech", "roche", "avastin", "herceptin", "tecentriq", "ocrevus"],
-    treatment_areas: [
-      {
-        id: "genentech_oncology",
-        category: "oncology",
-        subcategories: ["breast_cancer", "pancreatic_cancer", "lung_cancer"],
-        keywords: ["breast cancer", "pancreatic cancer", "targeted therapy", "herceptin", "avastin"],
-        flagship_medications: ["Herceptin", "Avastin", "Tecentriq", "Kadcyla"],
-        priority: 10
-      },
-      {
-        id: "genentech_ophthalmology",
-        category: "ophthalmology",
-        subcategories: ["macular_degeneration", "diabetic_retinopathy"],
-        keywords: ["macular degeneration", "AMD", "wet AMD", "vision loss", "lucentis"],
-        flagship_medications: ["Lucentis", "Vabysmo"],
-        priority: 8
-      },
-      {
-        id: "genentech_neurology",
-        category: "neurology",
-        subcategories: ["multiple_sclerosis"],
-        keywords: ["multiple sclerosis", "MS", "ocrevus"],
-        flagship_medications: ["Ocrevus", "Rituxan"],
-        priority: 7
-      }
-    ]
+    id: 'genentech',
+    name: 'Genentech',
+    logo: '/assets/logos/genentech.svg',
+    primaryColor: '#0046ad',
+    secondaryColor: '#d62228',
+    priorityCategories: ['oncology', 'immunology', 'neurology'],
+    description: 'A biotechnology company discovering and developing medicines for people with serious and life-threatening diseases.'
   },
-  
   {
-    id: "gsk",
-    name: "GlaxoSmithKline",
-    logo_url: "/logos/gsk.png",
-    keywords: ["gsk", "glaxosmithkline", "advair", "trelegy", "nucala", "benlysta"],
-    treatment_areas: [
-      {
-        id: "gsk_respiratory",
-        category: "pulmonology",
-        subcategories: ["asthma", "copd"],
-        keywords: ["asthma", "COPD", "chronic obstructive pulmonary disease", "respiratory", "breathing", "advair", "trelegy", "nucala"],
-        flagship_medications: ["Advair", "Trelegy", "Nucala"],
-        priority: 10
-      },
-      {
-        id: "gsk_immunology",
-        category: "rheumatology",
-        subcategories: ["lupus"],
-        keywords: ["lupus", "SLE", "systemic lupus erythematosus", "autoimmune", "benlysta"],
-        flagship_medications: ["Benlysta"],
-        priority: 8
-      },
-      {
-        id: "gsk_vaccines",
-        category: "infectious_diseases",
-        subcategories: ["influenza", "meningitis", "shingles"],
-        keywords: ["vaccine", "shingles", "flu", "influenza", "shingrix"],
-        flagship_medications: ["Shingrix", "Bexsero", "Fluarix"],
-        priority: 9
-      }
-    ]
+    id: 'gsk',
+    name: 'GSK',
+    logo: '/assets/logos/gsk.svg',
+    primaryColor: '#f36633',
+    secondaryColor: '#151f6d',
+    priorityCategories: ['respiratory', 'infectious_disease', 'oncology'],
+    description: 'A global healthcare company developing innovative medicines, vaccines, and consumer health products.'
   },
-  
   {
-    id: "lilly",
-    name: "Eli Lilly",
-    logo_url: "/logos/lilly.png",
-    keywords: ["eli lilly", "lilly", "trulicity", "humalog", "jardiance", "taltz", "olumiant"],
-    treatment_areas: [
-      {
-        id: "lilly_endocrinology",
-        category: "endocrinology",
-        subcategories: ["diabetes", "obesity"],
-        keywords: ["diabetes", "type 2 diabetes", "T2D", "insulin", "GLP-1", "trulicity", "humalog", "jardiance", "mounjaro"],
-        flagship_medications: ["Trulicity", "Humalog", "Jardiance", "Mounjaro"],
-        priority: 10
-      },
-      {
-        id: "lilly_neurology",
-        category: "neurology",
-        subcategories: ["alzheimers", "migraine"],
-        keywords: ["alzheimer's", "dementia", "cognitive decline", "amyloid", "donanemab", "migraine", "emgality"],
-        flagship_medications: ["Donanemab", "Emgality"],
-        priority: 9
-      },
-      {
-        id: "lilly_immunology",
-        category: "rheumatology",
-        subcategories: ["rheumatoid_arthritis", "psoriasis"],
-        keywords: ["rheumatoid arthritis", "psoriasis", "psoriatic arthritis", "taltz", "olumiant"],
-        flagship_medications: ["Taltz", "Olumiant"],
-        priority: 7
-      }
-    ]
+    id: 'lilly',
+    name: 'Eli Lilly',
+    logo: '/assets/logos/lilly.svg',
+    primaryColor: '#e1261c',
+    secondaryColor: '#0033a0',
+    priorityCategories: ['endocrinology', 'oncology', 'neurology'],
+    description: 'A pharmaceutical company developing innovative medicines across multiple therapeutic areas with a focus on diabetes, oncology, and neuroscience.'
+  },
+  {
+    id: 'amgen',
+    name: 'Amgen',
+    logo: '/assets/logos/amgen.svg',
+    primaryColor: '#0063c3',
+    secondaryColor: '#f7b11e',
+    priorityCategories: ['oncology', 'immunology', 'cardiology'],
+    description: 'A biotechnology company committed to unlocking the potential of biology for patients suffering from serious illnesses.'
+  },
+  {
+    id: 'novartis',
+    name: 'Novartis',
+    logo: '/assets/logos/novartis.svg',
+    primaryColor: '#0460a9',
+    secondaryColor: '#8ebfed',
+    priorityCategories: ['cardiology', 'immunology', 'neurology'],
+    description: 'A global healthcare company reimagining medicine to improve and extend people\'s lives.'
+  },
+  {
+    id: 'roche',
+    name: 'Roche',
+    logo: '/assets/logos/roche.svg',
+    primaryColor: '#0a0635',
+    secondaryColor: '#e41e26',
+    priorityCategories: ['oncology', 'neurology', 'rare_disease'],
+    description: 'A leader in research-focused healthcare with combined strengths in pharmaceuticals and diagnostics.'
+  },
+  {
+    id: 'merck',
+    name: 'Merck',
+    logo: '/assets/logos/merck.svg',
+    primaryColor: '#00857c',
+    secondaryColor: '#e2231a',
+    priorityCategories: ['oncology', 'infectious_disease', 'cardiology'],
+    description: 'A global healthcare company working to help the world be well through its prescription medicines, vaccines, and biologic therapies.'
   }
 ];
 
 /**
- * Map of medical categories to subcategories
- * This helps with fallback matching when exact subcategories aren't found
- */
-export const MEDICAL_CATEGORY_MAP: Record<string, string[]> = {
-  oncology: ["breast_cancer", "lung_cancer", "pancreatic_cancer", "prostate_cancer", "colorectal_cancer"],
-  rheumatology: ["rheumatoid_arthritis", "osteoarthritis", "lupus", "gout", "psoriatic_arthritis"],
-  pulmonology: ["asthma", "copd", "pneumonia", "pulmonary_fibrosis", "sleep_apnea"],
-  endocrinology: ["diabetes", "thyroid_disorders", "adrenal_disorders", "obesity", "pituitary_disorders"],
-  neurology: ["alzheimers", "multiple_sclerosis", "parkinsons", "migraine", "epilepsy", "stroke"],
-  ophthalmology: ["macular_degeneration", "glaucoma", "diabetic_retinopathy", "cataracts", "dry_eye"],
-  infectious_diseases: ["covid19", "influenza", "hiv", "hepatitis_c", "tuberculosis", "meningitis", "shingles"]
-};
-
-/**
- * Find a company by ID
+ * Get a pharmaceutical company by ID
  */
 export function getCompanyById(id: string): PharmaCompany | undefined {
   return PHARMA_COMPANIES.find(company => company.id === id);
 }
 
 /**
- * Get all treatment areas for a specific category across all companies
+ * Get a medical category by ID
  */
-export function getTreatmentAreasByCategory(category: string): PharmaTreatmentArea[] {
-  return PHARMA_COMPANIES.flatMap(company => 
-    company.treatment_areas.filter(area => area.category === category)
-  );
+export function getCategoryById(id: string): MedicalCategory | undefined {
+  return MEDICAL_CATEGORY_MAP[id];
 }
 
 /**
- * Get all companies that focus on a specific medical category
+ * Get companies sorted by priority for a specific treatment category
  */
-export function getCompaniesByCategory(category: string): PharmaCompany[] {
-  return PHARMA_COMPANIES.filter(company => 
-    company.treatment_areas.some(area => area.category === category)
-  );
+export function getCompaniesByCategory(categoryId: string): PharmaCompany[] {
+  return PHARMA_COMPANIES
+    .filter(company => company.priorityCategories.includes(categoryId))
+    .sort((a, b) => {
+      // Companies with the category as first priority come first
+      const aPriority = a.priorityCategories.indexOf(categoryId);
+      const bPriority = b.priorityCategories.indexOf(categoryId);
+      return aPriority - bPriority;
+    });
+}
+
+/**
+ * Get all treatment categories
+ */
+export function getAllCategories(): MedicalCategory[] {
+  return Object.values(MEDICAL_CATEGORY_MAP);
+}
+
+/**
+ * Get priority categories for a company
+ */
+export function getPriorityCategories(companyId: string): MedicalCategory[] {
+  const company = getCompanyById(companyId);
+  if (!company) return [];
+  
+  return company.priorityCategories
+    .map(id => MEDICAL_CATEGORY_MAP[id])
+    .filter(Boolean);
 } 
