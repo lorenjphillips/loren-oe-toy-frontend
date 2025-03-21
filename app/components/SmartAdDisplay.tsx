@@ -37,6 +37,7 @@ import analyticsService, {
   measureAdPerformance
 } from '../services/analytics';
 import analyticsStore from '../store/analyticsStore';
+import { contentTimingService, ContentProgressState } from '../services/contentTiming';
 
 // Import transition utilities
 import { 
@@ -157,6 +158,7 @@ export default function SmartAdDisplay({
   const [error, setError] = useState<string | null>(null);
   const [viewStartTime, setViewStartTime] = useState<number | null>(null);
   const [transitionIn, setTransitionIn] = useState<boolean>(false);
+  const [adReady, setAdReady] = useState<boolean>(false);
   
   // Reference to track component mounted state
   const isMounted = useRef(true);
@@ -168,6 +170,9 @@ export default function SmartAdDisplay({
   // Add state to track selected template and settings
   const [templateType, setTemplateType] = useState<AdTemplateType>(AdTemplateType.DEFAULT);
   const [templateSettings, setTemplateSettings] = useState<Record<string, any>>({});
+
+  // Add new state for content timing
+  const [contentProgress, setContentProgress] = useState<ContentProgressState | null>(null);
 
   // Initialize analytics store on mount
   useEffect(() => {
@@ -251,6 +256,15 @@ export default function SmartAdDisplay({
         // No suitable ads found
         setAdContent(null);
       }
+
+      // Get microsimulation config adapted for the estimated wait time
+      if (enhancedMapping && enhancedMapping.topMatch) {
+        const microsimConfig = contentTimingService.getMicrosimulationConfig(
+          questionText,
+          enhancedMapping.topMatch.company,
+          enhancedMapping.topMatch.treatmentArea
+        );
+      }
     } catch (err) {
       console.error('Error in ad processing:', err);
       if (isMounted.current) {
@@ -324,21 +338,31 @@ export default function SmartAdDisplay({
 
   // Effect to classify question when it changes
   useEffect(() => {
-    // Don't process if the question is empty
-    if (!question || question.trim() === '') return;
-    
-    // Track view time if we're changing questions
-    if (adContent) {
-      trackViewTime();
+    if (question.trim()) {
+      setAdReady(false);
+      classifyAndGetAds(question);
     }
-    
-    // Reset view tracking
-    setViewStartTime(null);
-    setImpressionId(null);
-    
-    // Classify the new question
-    classifyAndGetAds(question);
   }, [question]);
+
+  // Add effect to connect to content timing service
+  useEffect(() => {
+    const handleProgressUpdate = (progress: ContentProgressState) => {
+      setContentProgress(progress);
+      
+      // Adjust the component visibility based on content progress
+      if (progress.contentProgress > 30) {
+        setAdReady(true);
+      }
+    };
+    
+    // Add progress listener
+    contentTimingService.addProgressListener(handleProgressUpdate);
+    
+    // Cleanup
+    return () => {
+      contentTimingService.removeProgressListener(handleProgressUpdate);
+    };
+  }, []);
 
   // Update the effect that processes ad content to also select the template
   useEffect(() => {
@@ -384,8 +408,82 @@ export default function SmartAdDisplay({
     };
   }, [adContent]);
 
-  // Don't render anything if not loading and no ad content
-  if (!isLoading && !adContent) return null;
+  // When rendering templates, integrate with content timing
+  const renderAdTemplate = () => {
+    if (!adContent) return null;
+    
+    const commonProps = {
+      adContent,
+      onCTAClick: (adId: string) => {
+        // Handle CTA click
+        console.log(`Ad CTA clicked: ${adId}`);
+        
+        // Track CTA click via analytics service
+        analyticsService.trackCTAClick(adId, adContent.company.id, impressionId || '');
+        
+        // Send tracking data to server
+        axios.post('/api/ads/click', {
+          adContentId: adId,
+          impressionId
+        }).catch(err => {
+          console.error('Failed to record click:', err);
+        });
+      },
+      transitionSettings: settings,
+      analytics: analyticsStore,
+      visibilityTracker: visibilityObserver.current,
+      onImpressionTracked: trackViewTime,
+      contentProgress: contentProgress
+    };
+    
+    // Render the appropriate template based on type
+    switch (templateType) {
+      case AdTemplateType.PFIZER:
+        return (
+          <PfizerAdTemplate
+            {...commonProps}
+            showEvidenceBox={templateSettings.showEvidenceBox}
+            evidenceText={templateSettings.evidenceText}
+          />
+        );
+        
+      case AdTemplateType.GENENTECH:
+        return (
+          <GenentechAdTemplate
+            {...commonProps}
+            showStats={templateSettings.showStats}
+            clinicalStats={templateSettings.clinicalStats}
+          />
+        );
+        
+      case AdTemplateType.GSK:
+        return (
+          <GSKAdTemplate
+            {...commonProps}
+            showEvidencePanel={templateSettings.showEvidencePanel}
+            evidencePoints={templateSettings.evidencePoints}
+          />
+        );
+        
+      case AdTemplateType.ELI_LILLY:
+        return (
+          <EliLillyAdTemplate
+            {...commonProps}
+            showDataMetrics={templateSettings.showDataMetrics}
+            customMetrics={templateSettings.customMetrics}
+          />
+        );
+        
+      default:
+        return <BaseAdTemplate {...commonProps} />;
+    }
+  };
+
+  // Only render if we have ad content or we're loading AND question is available
+  // Also check for adReady, which is controlled by content progress
+  if ((!adContent && !isLoading) || !question || (isLoading && !adReady)) {
+    return null;
+  }
 
   // If we don't have ad content yet but are loading, show placeholder with transition
   if (!adContent) {
@@ -475,72 +573,6 @@ export default function SmartAdDisplay({
       };
       
       analyticsService.trackClick(adContent.id, target, 'click', position);
-    }
-  };
-
-  // Render different template based on type
-  const renderAdTemplate = () => {
-    if (!adContent) return null;
-    
-    const commonProps = {
-      adContent,
-      onCTAClick: (adId: string) => {
-        // Handle CTA click
-        console.log(`Ad CTA clicked: ${adId}`);
-        
-        // Track CTA click via analytics service
-        analyticsService.trackCTAClick(adId, adContent.company.id, impressionId || '');
-        
-        // Send tracking data to server
-        axios.post('/api/ads/click', {
-          adContentId: adId,
-          impressionId
-        }).catch(err => {
-          console.error('Failed to record click:', err);
-        });
-      }
-    };
-    
-    // Render the appropriate template based on type
-    switch (templateType) {
-      case AdTemplateType.PFIZER:
-        return (
-          <PfizerAdTemplate
-            {...commonProps}
-            showEvidenceBox={templateSettings.showEvidenceBox}
-            evidenceText={templateSettings.evidenceText}
-          />
-        );
-        
-      case AdTemplateType.GENENTECH:
-        return (
-          <GenentechAdTemplate
-            {...commonProps}
-            showStats={templateSettings.showStats}
-            clinicalStats={templateSettings.clinicalStats}
-          />
-        );
-        
-      case AdTemplateType.GSK:
-        return (
-          <GSKAdTemplate
-            {...commonProps}
-            showEvidencePanel={templateSettings.showEvidencePanel}
-            evidencePoints={templateSettings.evidencePoints}
-          />
-        );
-        
-      case AdTemplateType.ELI_LILLY:
-        return (
-          <EliLillyAdTemplate
-            {...commonProps}
-            showDataMetrics={templateSettings.showDataMetrics}
-            customMetrics={templateSettings.customMetrics}
-          />
-        );
-        
-      default:
-        return <BaseAdTemplate {...commonProps} />;
     }
   };
 

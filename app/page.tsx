@@ -9,6 +9,9 @@ import SmartAdDisplay from './components/SmartAdDisplay';
 import { TransitionSettings, defaultTransitionSettings } from './styles/transitions';
 import { useAds } from './contexts/AdContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import TimingIndicator from './components/TimingIndicator';
+import { timeEstimator, TimeEstimationResult } from './services/timeEstimation';
+import { contentTimingService } from './services/contentTiming';
 
 interface HistoryItem {
   role: string;
@@ -65,6 +68,15 @@ export default function Home() {
   const [questionId, setQuestionId] = useState<string>('');
   const [showAdmin, setShowAdmin] = useState<boolean>(false);
   
+  // Add new state for streaming and timing
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const [streamingData, setStreamingData] = useState<{ content: string, complete: boolean }>({ 
+    content: '', 
+    complete: false 
+  });
+  const [timeEstimate, setTimeEstimate] = useState<TimeEstimationResult | null>(null);
+  const [canShowAnswer, setCanShowAnswer] = useState<boolean>(false);
+  
   // User's preference for transition settings - could be loaded from profile/cookies
   const [transitionSettings, setTransitionSettings] = useState<Partial<TransitionSettings>>({
     // Default to clinical professional settings
@@ -84,6 +96,8 @@ export default function Home() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
+    setStreamingData({ content: '', complete: false });
+    setCanShowAnswer(false);
 
     // Generate a new question ID for tracking purposes
     const newQuestionId = uuidv4();
@@ -101,15 +115,69 @@ export default function Home() {
 
       scrollToBottom();
 
-      // Process the question to get an answer
-      const response = await axios.post('/api/ask', { question, history });
-
-      setHistory([...history, { role: 'user', content: question }, { role: 'assistant', content: response.data.answer }]);
-      setAnswer(response.data.answer);
-      setQuestion('');
+      // Use streaming API if enabled
+      if (isStreaming) {
+        // Start SSE connection
+        const eventSource = new EventSource(`/api/ask?question=${encodeURIComponent(question)}`);
+        
+        eventSource.addEventListener('classification', (event) => {
+          const classification = JSON.parse(event.data);
+          // Update classification in ad context if needed
+        });
+        
+        eventSource.addEventListener('timeEstimate', (event) => {
+          const estimate = JSON.parse(event.data);
+          setTimeEstimate(estimate);
+          
+          // Initialize content timing service
+          contentTimingService.initializeContentTiming(question, undefined, estimate);
+        });
+        
+        eventSource.addEventListener('progress', (event) => {
+          // Progress updates are handled by the TimingIndicator component
+          // since timeEstimator already has the progress listener
+        });
+        
+        eventSource.addEventListener('chunk', (event) => {
+          const data = JSON.parse(event.data);
+          setStreamingData(prev => ({ 
+            content: data.responseText, 
+            complete: false 
+          }));
+        });
+        
+        eventSource.addEventListener('complete', (event) => {
+          const data = JSON.parse(event.data);
+          setStreamingData({ 
+            content: data.responseText, 
+            complete: true 
+          });
+          setHistory([
+            ...history, 
+            { role: 'user', content: question }, 
+            { role: 'assistant', content: data.responseText }
+          ]);
+          setQuestion('');
+          setLoading(false);
+          eventSource.close();
+        });
+        
+        eventSource.addEventListener('error', (event) => {
+          console.error('EventSource error:', event);
+          setLoading(false);
+          eventSource.close();
+        });
+      } else {
+        // Use the non-streaming approach with POST
+        const response = await axios.post('/api/ask', { question, history });
+        setTimeEstimate(response.data.timeEstimate);
+        setHistory([...history, { role: 'user', content: question }, { role: 'assistant', content: response.data.answer }]);
+        setAnswer(response.data.answer);
+        setQuestion('');
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Error fetching the answer:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -119,6 +187,9 @@ export default function Home() {
     setAnswer('');
     setQuestion('');
     setQuestionId('');
+    setStreamingData({ content: '', complete: false });
+    setTimeEstimate(null);
+    contentTimingService.reset();
     scrollToBottom();
   };
 
@@ -143,6 +214,16 @@ export default function Home() {
   // Toggle ad system
   const handleAdSystemToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
     setIsAdSystemEnabled(event.target.checked);
+  };
+
+  // Toggle streaming mode
+  const handleStreamingToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsStreaming(event.target.checked);
+  };
+  
+  // Handle completion notification from TimingIndicator
+  const handleTimingComplete = () => {
+    setCanShowAnswer(true);
   };
 
   useEffect(() => {
@@ -186,16 +267,28 @@ export default function Home() {
         <Collapse in={showAdmin}>
           <AdminPanel elevation={2}>
             <Typography variant="h6" gutterBottom>Admin Controls</Typography>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isAdSystemEnabled}
-                  onChange={handleAdSystemToggle}
-                  color="primary"
-                />
-              }
-              label="Enable Ad System"
-            />
+            <Box display="flex" alignItems="center" gap={2}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={isAdSystemEnabled}
+                    onChange={handleAdSystemToggle}
+                    color="primary"
+                  />
+                }
+                label="Enable Ad System"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={isStreaming}
+                    onChange={handleStreamingToggle}
+                    color="primary"
+                  />
+                }
+                label="Enable Streaming"
+              />
+            </Box>
             {classification && classification.primaryCategory && (
               <Box mt={2}>
                 <Typography variant="subtitle2">Question Classification</Typography>
@@ -213,45 +306,86 @@ export default function Home() {
           </AdminPanel>
         </Collapse>
 
-        {/* Display the SmartAdDisplay component when loading */}
-        <ErrorBoundary>
+        {/* Conversation History */}
+        {history.length > 0 && (
+          <StyledPaper>
+            <List>
+              {history.map((item, index) => (
+                <Box key={index} marginBottom={2}>
+                  <Typography variant="subtitle1" fontWeight="bold" color={item.role === 'user' ? 'primary' : 'secondary'}>
+                    {item.role === 'user' ? 'You' : 'Assistant'}:
+                  </Typography>
+                  <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
+                    {item.content}
+                  </Typography>
+                </Box>
+              ))}
+            </List>
+          </StyledPaper>
+        )}
+
+        {/* Current Question/Answer */}
+        <StyledPaper>
+          <form onSubmit={handleSubmit}>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <TextField
+                label="Ask a medical question..."
+                variant="outlined"
+                fullWidth
+                multiline
+                rows={2}
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                disabled={loading}
+              />
+              <Box display="flex" justifyContent="flex-end">
+                <StyledButton
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={!question.trim() || loading}
+                >
+                  {loading ? 'Processing...' : 'Ask'}
+                </StyledButton>
+              </Box>
+            </Box>
+          </form>
+
+          {/* Progress and timing indicator */}
           {loading && (
-            <SmartAdDisplay 
+            <TimingIndicator 
               question={question}
+              isGenerating={loading}
+              onComplete={handleTimingComplete}
+              variant="linear"
+              showStages={true}
+            />
+          )}
+
+          {/* Streaming answer display */}
+          {loading && isStreaming && streamingData.content && canShowAnswer && (
+            <Box marginTop={2}>
+              <Typography variant="subtitle1" fontWeight="bold" color="secondary">
+                Assistant:
+              </Typography>
+              <Typography variant="body1" style={{ whiteSpace: 'pre-wrap' }}>
+                {streamingData.content}
+              </Typography>
+            </Box>
+          )}
+        </StyledPaper>
+
+        {/* Smart ad display - integrate with content timing */}
+        <ErrorBoundary>
+          {isAdSystemEnabled && questionId && (
+            <SmartAdDisplay 
+              question={question} 
               isLoading={loading}
               onAdImpression={handleAdImpression}
               transitionSettings={transitionSettings}
             />
           )}
         </ErrorBoundary>
-
-        {history.length > 0 && (
-          <List>
-            {history.map((item, index) => (
-              <StyledPaper elevation={3} key={index}>
-                <Typography variant="body1" component="div">
-                  <strong>{item.role.charAt(0).toUpperCase() + item.role.slice(1)}:</strong>
-                </Typography>
-                <Box component="div" dangerouslySetInnerHTML={{ __html: item.content.replace(/\n/g, '<br />') }} />
-              </StyledPaper>
-            ))}
-          </List>
-        )}
-        <StyledPaper elevation={3}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <TextField
-              label="Ask a question"
-              variant="outlined"
-              fullWidth
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              disabled={loading}  // Disable input while loading
-            />
-            <StyledButton type="submit" variant="contained" color="primary" disabled={loading}>
-              Ask
-            </StyledButton>
-          </form>
-        </StyledPaper>
       </Container>
     </>
   );
