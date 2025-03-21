@@ -614,15 +614,9 @@ const CategoryHeatmap: React.FC<CategoryHeatmapProps> = ({
         .style('font-size', '0.7em')
         .style('fill', theme.colors.text.primary)
         .text('Reset');
-        
-      // Update button visibility when selection changes
-      updateResetButton();
     }
     
-    // Initial highlighting update
-    updateHighlights();
-    
-    // Helper functions
+    // Helper functions for updates
     function updateResetButton() {
       if (!onCellClick) return;
       
@@ -630,11 +624,9 @@ const CategoryHeatmap: React.FC<CategoryHeatmapProps> = ({
         .style('display', selectedCell ? 'block' : 'none');
     }
     
-    // Set up watchers for state changes
-    useEffect(() => {
-      updateHighlights();
-      updateResetButton();
-    }, [selectedCell, highlightedRow, highlightedColumn]);
+    // Apply initial highlighting and update when states change
+    updateHighlights();
+    updateResetButton();
     
   }, [
     data,
@@ -661,7 +653,9 @@ const CategoryHeatmap: React.FC<CategoryHeatmapProps> = ({
     highlightedRow,
     highlightedColumn,
     emptyColor,
-    maxCellsBeforeScroll
+    maxCellsBeforeScroll,
+    title,
+    subtitle
   ]);
   
   // Helper function to get contrasting text color for better readability
