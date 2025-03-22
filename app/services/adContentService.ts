@@ -12,7 +12,8 @@ import {
   AdContentFilterOptions, 
   AdContentImpression, 
   AdContentResponse,
-  TreatmentCategory
+  TreatmentCategory,
+  AdType
 } from '../models/adTypes';
 import { 
   AD_CONTENT, 
@@ -20,7 +21,6 @@ import {
   getAdContentById, 
   getTreatmentCategoriesByMedicalCategory 
 } from '../data/adContent';
-import { AdType } from '../types/ad';
 
 // In-memory storage for impressions (would be a database in production)
 const impressions: AdContentImpression[] = [];
@@ -55,15 +55,21 @@ export async function getAdContent(
   }
   
   if (options.medicalCategoryIds && options.medicalCategoryIds.length > 0) {
-    content = content.filter(ad => options.medicalCategoryIds!.includes(ad.treatmentCategory.medicalCategory));
+    content = content.filter(ad => {
+      return options.medicalCategoryIds!.includes((ad.treatmentCategory as TreatmentCategory).medicalCategory);
+    });
   }
   
   if (options.adTypes && options.adTypes.length > 0) {
-    content = content.filter(ad => options.adTypes!.includes(ad.type));
+    content = content.filter(ad => {
+      return options.adTypes!.includes(ad.type as AdType);
+    });
   }
   
   if (options.priorityMin !== undefined) {
-    content = content.filter(ad => ad.metadata.priority >= options.priorityMin!);
+    content = content.filter(ad => {
+      return ad.metadata?.priority >= options.priorityMin! || false;
+    });
   }
   
   if (options.isActive !== undefined) {
@@ -71,7 +77,11 @@ export async function getAdContent(
   }
   
   // Sort by priority (descending)
-  content = content.sort((a, b) => b.metadata.priority - a.metadata.priority);
+  content = content.sort((a, b) => {
+    const priorityA = a.metadata?.priority ?? 0;
+    const priorityB = b.metadata?.priority ?? 0;
+    return priorityB - priorityA;
+  });
   
   // Limit results if specified
   if (options.limit !== undefined && options.limit > 0) {
@@ -186,7 +196,7 @@ function updateFrequencyCaps(adContentId: string, userId?: string): void {
     return;
   }
   
-  const { frequencyCap, maxImpressionsByUser } = ad.metadata;
+  const { frequencyCap = undefined, maxImpressionsByUser = undefined } = ad.metadata || {};
   
   if (frequencyCap || maxImpressionsByUser) {
     // In production, we would update user-specific frequency counters
@@ -288,9 +298,14 @@ export async function getAndTrackAdContent(
  * @returns The recommended ad type
  */
 export function getBestAdTypeForTreatment(treatmentCategory: TreatmentCategory): AdType {
-  if (treatmentCategory.preferredAdTypes && treatmentCategory.preferredAdTypes.length > 0) {
-    return treatmentCategory.preferredAdTypes[0];
+  const preferredAdTypes = (treatmentCategory as any).preferredAdTypes;
+  
+  if (preferredAdTypes && preferredAdTypes.length > 0) {
+    return preferredAdTypes[0];
   }
+  
+  // Default logic based on medical category
+  const medicalCategory = treatmentCategory.medicalCategory.toLowerCase();
   
   // Default fallback
   return AdType.TEXT;

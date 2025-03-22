@@ -296,7 +296,8 @@ const positiveOutcomeNode: OutcomeNode = {
 // Suboptimal outcome node
 const suboptimalOutcomeNode: OutcomeNode = {
   id: NODE_IDS.OUTCOME_SUBOPTIMAL,
-  type: 'neutral',
+  type: 'outcome',
+  outcomeType: 'neutral',
   title: 'Suboptimal Treatment Outcome',
   content: 'After treatment, the patient experiences partial improvement in symptoms. Visual acuity stabilizes at 20/60 in the right eye, but OCT shows persistent subretinal fluid. The patient requires frequent injections to maintain this status.',
   patientStatus: 'unchanged',
@@ -307,7 +308,8 @@ const suboptimalOutcomeNode: OutcomeNode = {
 // Negative outcome node
 const negativeOutcomeNode: OutcomeNode = {
   id: NODE_IDS.OUTCOME_NEGATIVE,
-  type: 'negative',
+  type: 'outcome',
+  outcomeType: 'negative',
   title: 'Negative Treatment Outcome',
   content: 'The patient experiences progressive vision loss despite treatment attempts. Visual acuity deteriorates to 20/200 in the right eye, and OCT shows development of a disciform scar.',
   patientStatus: 'worsened',

@@ -35,17 +35,37 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   borderRadius: '8px',
 }));
 
-const StatusChip = styled(Chip)(({ theme, status }) => {
-  let color = '#4caf50'; // Active - green
-  if (status === 'pending') color = '#ff9800'; // Pending - orange
-  else if (status === 'rejected') color = '#f44336'; // Rejected - red
-  else if (status === 'review') color = '#2196f3'; // In Review - blue
-  
-  return {
-    backgroundColor: color,
-    color: 'white',
+type StatusType = 'active' | 'pending' | 'rejected' | 'review';
+
+interface StatusChipProps {
+  status: StatusType;
+  label: string;
+  size?: 'small' | 'medium';
+}
+
+// Create a normal React component for StatusChip
+function StatusChip({ status, label, size = 'small' }: StatusChipProps) {
+  const getColor = () => {
+    switch (status) {
+      case 'active': return '#4caf50'; // green
+      case 'pending': return '#ff9800'; // orange
+      case 'rejected': return '#f44336'; // red
+      case 'review': return '#2196f3'; // blue
+      default: return '#4caf50';
+    }
   };
-});
+  
+  return (
+    <Chip 
+      label={label}
+      size={size}
+      sx={{
+        backgroundColor: getColor(),
+        color: 'white',
+      }}
+    />
+  );
+}
 
 interface CompanyData {
   id: string;

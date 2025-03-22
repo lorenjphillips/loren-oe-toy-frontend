@@ -2,9 +2,19 @@ import { MedicalClassification } from './classification';
 import { 
   PHARMA_COMPANIES, 
   PharmaCompany, 
-  PharmaTreatmentArea, 
+  MedicalCategory, 
   MEDICAL_CATEGORY_MAP 
 } from '../data/pharmaCategories';
+
+// Define PharmaTreatmentArea interface since it's missing
+export interface PharmaTreatmentArea {
+  id: string;
+  category: string;
+  priority: number;
+  subcategories: string[];
+  flagship_medications: string[];
+  keywords: string[]; // Add missing keywords property
+}
 
 /**
  * Interface for a matched company result

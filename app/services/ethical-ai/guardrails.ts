@@ -9,6 +9,23 @@ import { AdContent, AdContentResponse } from '../../models/adTypes';
 import { getConfig } from './configuration';
 
 /**
+ * Extended interfaces with additional properties needed for this module
+ */
+interface ExtendedAdContent extends AdContent {
+  citations?: Array<{
+    title: string;
+    url: string;
+  }>;
+  regulatoryText?: string;
+  isDrugPromotion?: boolean;
+}
+
+interface ExtendedAdCreative {
+  displaySettings?: Record<string, any>;
+  bodyText?: string;
+}
+
+/**
  * Validates the clinical accuracy of ad content
  * 
  * @param adContent The ad content to validate
@@ -18,9 +35,12 @@ export function validateClinicalAccuracy(adContent: AdContent) {
   const config = getConfig();
   const issues: string[] = [];
   
+  // Cast to extended type
+  const extendedAdContent = adContent as ExtendedAdContent;
+  
   // Check for required clinical citations
   if (config.requireClinicalCitations && 
-      (!adContent.citations || adContent.citations.length === 0)) {
+      (!extendedAdContent.citations || extendedAdContent.citations.length === 0)) {
     issues.push('Missing clinical citations');
   }
   
@@ -32,12 +52,15 @@ export function validateClinicalAccuracy(adContent: AdContent) {
   
   // Check specific accuracy rules based on content type
   const contentType = adContent.type;
-  const typeRules = config.validationRulesByType[contentType];
+  const typeRules = contentType ? config.validationRulesByType[contentType] : undefined;
   
   if (typeRules?.keywords) {
     // Check for required medical keywords for this content type
+    const extendedCreative = adContent.creative as ExtendedAdCreative | undefined;
+    const bodyText = extendedCreative?.bodyText || '';
+    
     const hasRequiredKeywords = typeRules.keywords.some(
-      keyword => adContent.creative.bodyText.includes(keyword)
+      (keyword: string) => bodyText.includes(keyword)
     );
     
     if (!hasRequiredKeywords) {
@@ -66,6 +89,7 @@ export function getTransparencyInfo(
   questionContext?: string
 ) {
   const config = getConfig();
+  const extendedAdContent = adContent as ExtendedAdContent;
   
   return {
     selectionCriteria: {
@@ -75,7 +99,7 @@ export function getTransparencyInfo(
       isSponsored: true
     },
     disclaimers: adContent.disclaimers || [],
-    citations: adContent.citations || [],
+    citations: extendedAdContent.citations || [],
     dataUsage: config.transparencyDisclosures.dataUsage,
     aboutAds: config.transparencyDisclosures.aboutAds
   };
@@ -108,37 +132,40 @@ export function getSeparationIndicatorType(adContent: AdContent) {
  * Validates compliance with medical advertising standards
  * 
  * @param adContent The ad content to validate
- * @returns Compliance validation result
+ * @returns Validation result with issues if any
  */
 export function validateCompliance(adContent: AdContent) {
   const config = getConfig();
   const issues: string[] = [];
+  const extendedAdContent = adContent as ExtendedAdContent;
+  const extendedCreative = adContent.creative as ExtendedAdCreative | undefined;
+  const bodyText = extendedCreative?.bodyText || '';
   
-  // Check for required regulatory text
+  // Check for regulatory text where required
   if (config.requireRegulatoryText && 
-      (!adContent.regulatoryText || adContent.regulatoryText.trim() === '')) {
+      (!extendedAdContent.regulatoryText || extendedAdContent.regulatoryText.trim() === '')) {
     issues.push('Missing required regulatory text');
   }
   
-  // Check for prohibited content
+  // Check for prohibited terms
   const prohibitedTerms = config.prohibitedContent.terms;
   for (const term of prohibitedTerms) {
-    if (adContent.creative.bodyText.toLowerCase().includes(term.toLowerCase())) {
+    if (bodyText.toLowerCase().includes(term.toLowerCase())) {
       issues.push(`Contains prohibited term: ${term}`);
     }
   }
   
-  // Check special rules for drug promotion (if applicable)
-  if (adContent.isDrugPromotion) {
-    // Requires fair balance of risks and benefits
-    if (!adContent.creative.bodyText.toLowerCase().includes('side effect') && 
-        !adContent.creative.bodyText.toLowerCase().includes('risk')) {
-      issues.push('Drug promotion missing fair balance of risks and benefits');
+  // Additional checks for drug promotion
+  if (extendedAdContent.isDrugPromotion) {
+    // Check for side effect disclosure
+    if (!bodyText.toLowerCase().includes('side effect') &&
+        !bodyText.toLowerCase().includes('risk')) {
+      issues.push('Drug promotion requires side effect/risk disclosure');
     }
     
-    // Requires generic name to be included
-    if (adContent.drugBrandName && !adContent.drugGenericName) {
-      issues.push('Drug promotion includes brand name but missing generic name');
+    // Check for generic name alongside brand name
+    if (adContent.brandName && !adContent.genericName) {
+      issues.push('Drug promotion requires generic name alongside brand name');
     }
   }
   

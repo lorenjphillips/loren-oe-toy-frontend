@@ -40,16 +40,24 @@ const CardContentWrapper = styled(CardContent)({
   flexGrow: 1,
 });
 
-const PlaceholderLogo = styled(Box)(({ theme, bgcolor }) => ({
-  height: '160px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: bgcolor || '#f5f5f5',
-  color: '#fff',
-  fontSize: '1.5rem',
-  fontWeight: 'bold',
-}));
+function PlaceholderLogo({ bgcolor, children }: { bgcolor?: string, children?: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        height: '160px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: bgcolor || '#f5f5f5',
+        color: '#fff',
+        fontSize: '1.5rem',
+        fontWeight: 'bold',
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
 
 interface PharmaceuticalCompany {
   id: string;

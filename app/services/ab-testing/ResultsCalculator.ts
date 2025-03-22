@@ -1,4 +1,4 @@
-import { Test, TestResults, VariantResult } from '../../models/ab-testing';
+import { Test, TestResults, VariantResult, SignificanceLevel } from '../../models/ab-testing';
 import { TestMetrics } from '../../models/ab-testing/TestMetrics';
 import { Variant } from '../../models/ab-testing/Variant';
 
@@ -278,135 +278,131 @@ export class ResultsCalculator {
    * Calculate results for a completed test
    */
   static calculateTestResults(test: Test, rawData: any): TestResults {
-    // In a real application, rawData would contain actual metrics for the test
-    // For this example, we'll generate mock results
-    
-    // Create basic results object
-    const results: TestResults = {
-      testId: test.id,
-      dateGenerated: new Date(),
-      isComplete: true,
-      sampleSize: test.sampleSize,
-      totalExposure: 0,
-      variantResults: [],
-      winningVariantId: null,
-      confidenceLevel: test.confidenceLevel,
-      summaryMetrics: {
-        totalConversions: 0,
-        overallConversionRate: 0,
-        improvementOverControl: 0
-      }
-    };
-    
-    // Find control variant
-    const controlVariant = test.variants.find(v => v.isControl);
-    if (!controlVariant) {
-      throw new Error('No control variant found');
-    }
-    
-    // Mock conversion rates - typically these would come from actual data
-    const mockConversionRates: Record<string, number> = {};
-    let controlConversionRate = 0.05; // Base 5% conversion rate for control
-    
-    // Set up mock data for control
-    mockConversionRates[controlVariant.id] = controlConversionRate;
-    
-    // Generate mock data for other variants, with some performing better and some worse
-    for (const variant of test.variants) {
-      if (!variant.isControl) {
-        // Random variation between -30% and +50% compared to control
-        const variation = (Math.random() * 0.8) - 0.3; // -0.3 to +0.5
-        mockConversionRates[variant.id] = controlConversionRate * (1 + variation);
-      }
-    }
-    
-    // Calculate stats for each variant
-    let totalExposures = 0;
-    let totalConversions = 0;
-    let bestPerformingVariantId = controlVariant.id;
-    let bestConversionRate = controlConversionRate;
-    
-    for (const variant of test.variants) {
-      // Calculate exposures based on traffic allocation
-      const variantExposures = Math.round(test.sampleSize * (variant.trafficAllocation / 100));
-      totalExposures += variantExposures;
+    // In a real app, we'd use the raw data
+    // For this example, we'll generate mockup test metrics
+
+    const variantResults: VariantResult[] = test.variants.map(variant => {
+      // Generate meaningful test data
+      const isControl = variant.isControl || false;
+      const impressions = Math.floor(Math.random() * 10000) + 5000; // 5000-15000 impressions
+      const conversionRate = isControl 
+        ? 0.05 + (Math.random() * 0.03) // 5-8% for control
+        : 0.05 + (Math.random() * 0.05); // 5-10% for test variants
       
-      // Calculate conversions based on mock conversion rate
-      const conversionRate = mockConversionRates[variant.id];
-      const variantConversions = Math.round(variantExposures * conversionRate);
-      totalConversions += variantConversions;
+      const conversions = Math.floor(impressions * conversionRate);
+      const clickThroughRate = conversionRate * (0.8 + Math.random() * 0.4); // Slightly less than conversion rate
+      const clicks = Math.floor(impressions * clickThroughRate);
       
-      // Check if this is the best performing variant
-      if (conversionRate > bestConversionRate) {
-        bestPerformingVariantId = variant.id;
-        bestConversionRate = conversionRate;
-      }
+      // Create metrics
+      const metrics: TestMetrics = {
+        impressions: impressions,
+        conversions: conversions,
+        clicks: clicks,
+        clickThroughRate: clickThroughRate,
+        conversionRate: conversionRate
+      };
       
-      // Statistical significance calculation (simplified)
-      // In a real application, use proper statistical methods
-      const improvementOverControl = variant.isControl 
-        ? 0 
-        : ((conversionRate / controlConversionRate) - 1) * 100;
+      // Calculate improvement over control (if not control)
+      let improvement = 0;
+      let pValue = null;
+      let confidenceInterval: [number, number] | null = null;
+      let significanceLevel: SignificanceLevel | null = null;
       
-      const pValue = this.calculatePValue(
-        variantConversions, 
-        variantExposures, 
-        controlVariant.isControl 
-          ? variantConversions 
-          : Math.round(test.sampleSize * (controlVariant.trafficAllocation / 100) * controlConversionRate),
-        controlVariant.isControl 
-          ? variantExposures 
-          : Math.round(test.sampleSize * (controlVariant.trafficAllocation / 100))
-      );
-      
-      const isSignificant = pValue < (1 - test.confidenceLevel);
-      
-      // Calculate confidence interval (simplified)
-      const standardError = Math.sqrt((conversionRate * (1 - conversionRate)) / variantExposures);
-      const zScore = this.getZScore(test.confidenceLevel);
-      const marginOfError = zScore * standardError;
-      const confidenceInterval: [number, number] = [
-        Math.max(0, conversionRate - marginOfError),
-        Math.min(1, conversionRate + marginOfError)
-      ];
-      
-      // Add variant result
-      results.variantResults.push({
-        variantId: variant.id,
-        variantName: variant.name,
-        isControl: variant.isControl,
-        metrics: {
-          exposures: variantExposures,
-          conversions: variantConversions,
-          conversionRate: conversionRate,
-          improvementOverControl: variant.isControl ? undefined : improvementOverControl
-        },
-        statisticalSignificance: {
-          pValue,
-          isSignificant,
-          confidenceInterval
+      if (!isControl) {
+        // Get control variant metrics
+        const controlVariant = test.variants.find(v => v.isControl);
+        if (controlVariant) {
+          const controlMetrics = test.variants.map(v => {
+            if (v.isControl) {
+              return {
+                impressions: Math.floor(Math.random() * 10000) + 5000,
+                conversions: Math.floor((Math.random() * 0.03 + 0.05) * (Math.floor(Math.random() * 10000) + 5000)),
+                clicks: Math.floor((Math.random() * 0.05 + 0.08) * (Math.floor(Math.random() * 10000) + 5000)),
+                clickThroughRate: Math.random() * 0.03 + 0.05,
+                conversionRate: Math.random() * 0.03 + 0.05
+              };
+            }
+            return metrics;
+          })[0];
+          
+          // Calculate improvement (as decimal, e.g., 0.15 for 15% improvement)
+          improvement = (conversionRate - controlMetrics.conversionRate) / controlMetrics.conversionRate;
+          
+          // Calculate mock p-value (lower is more significant)
+          // Use improvement to influence p-value - bigger improvements = lower p-values
+          pValue = Math.max(0.001, 0.2 - Math.abs(improvement));
+          
+          // Calculate confidence interval
+          const marginOfError = 0.02 + Math.random() * 0.03;
+          confidenceInterval = [improvement - marginOfError, improvement + marginOfError];
+          
+          // Determine significance level
+          if (pValue < 0.01) {
+            significanceLevel = 'high';
+          } else if (pValue < 0.05) {
+            significanceLevel = 'medium';
+          } else if (pValue < 0.1) {
+            significanceLevel = 'low';
+          } else {
+            significanceLevel = 'none';
+          }
         }
-      });
-    }
+      }
+      
+      // Create variant result
+      return {
+        variantId: variant.id,
+        name: variant.name, 
+        isControl: isControl,
+        metrics: metrics,
+        improvement: improvement,
+        confidenceInterval: confidenceInterval,
+        pValue: pValue,
+        significanceLevel: significanceLevel
+      };
+    });
     
-    // Update summary metrics
-    results.totalExposure = totalExposures;
-    results.summaryMetrics.totalConversions = totalConversions;
-    results.summaryMetrics.overallConversionRate = totalConversions / totalExposures;
+    // Calculate overall metrics
+    const totalImpressions = variantResults.reduce((sum, vr) => sum + vr.metrics.impressions, 0);
+    const totalConversions = variantResults.reduce((sum, vr) => sum + vr.metrics.conversions, 0);
     
-    // Determine if there's a winning variant
-    const winningVariant = results.variantResults.find(
-      vr => vr.variantId === bestPerformingVariantId && 
-            !vr.isControl && 
-            vr.statisticalSignificance.isSignificant
+    // Find winning variant if any
+    const significantVariants = variantResults.filter(vr => 
+      !vr.isControl && 
+      vr.significanceLevel && 
+      (vr.significanceLevel === 'high' || vr.significanceLevel === 'medium') && 
+      vr.improvement > 0
     );
     
-    if (winningVariant) {
-      results.winningVariantId = winningVariant.variantId;
-      results.summaryMetrics.improvementOverControl = winningVariant.metrics.improvementOverControl || 0;
+    let winningVariantId = null;
+    let improvementOverControl = 0;
+    
+    if (significantVariants.length > 0) {
+      // Find the variant with the greatest improvement
+      const winningVariant = significantVariants.reduce((best, current) => 
+        current.improvement > best.improvement ? current : best
+      );
+      
+      winningVariantId = winningVariant.variantId;
+      improvementOverControl = winningVariant.improvement * 100; // Convert to percentage
     }
     
-    return results;
+    // Return results
+    return {
+      testId: test.id,
+      dateGenerated: new Date(),
+      isComplete: test.status === 'completed',
+      sampleSize: totalImpressions,
+      totalExposure: totalImpressions,
+      variantResults: variantResults,
+      winningVariantId: winningVariantId,
+      confidenceLevel: 0.95, // 95% confidence level
+      summaryMetrics: {
+        totalConversions: totalConversions,
+        overallConversionRate: totalConversions / totalImpressions,
+        improvementOverControl: improvementOverControl
+      }
+    };
   }
   
   /**

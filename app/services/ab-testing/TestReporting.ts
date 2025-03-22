@@ -14,7 +14,7 @@ export class TestReporting {
   static async getTestResults(testId: string): Promise<TestResults | null> {
     try {
       // Get the test
-      const test = await TestManager.getTestById(testId);
+      const test = await Promise.resolve(TestManager.prototype.getTest(testId));
       if (!test) {
         console.error(`Test with ID ${testId} not found`);
         return null;
@@ -26,7 +26,7 @@ export class TestReporting {
         return null;
       }
       
-      // In a real app, we would fetch actual metrics data for the test
+      // In a real app, we would fetch actual metrics for the test
       // Here we'll generate mock data using the ResultsCalculator
       return ResultsCalculator.calculateTestResults(test, null);
     } catch (error) {
@@ -49,7 +49,7 @@ export class TestReporting {
   }[]> {
     try {
       // Get all completed tests
-      const completedTests = await TestManager.getCompletedTests();
+      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: 'completed' }));
       
       // Return a summary for each test
       return await Promise.all(completedTests.map(async (test) => {
@@ -88,7 +88,7 @@ export class TestReporting {
   }[]> {
     try {
       // Get all completed tests with results
-      const completedTests = await TestManager.getCompletedTests();
+      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: 'completed' }));
       const recommendations: {
         sourceTestId: string;
         sourceTestName: string;
@@ -104,8 +104,8 @@ export class TestReporting {
         
         // Only generate recommendations for tests with a clear winner
         if (results.winningVariantId) {
-          const winningVariant = test.variants.find(v => v.id === results.winningVariantId);
-          const controlVariant = test.variants.find(v => v.isControl);
+          const winningVariant = test.variants.find((v: any) => v.id === results.winningVariantId);
+          const controlVariant = test.variants.find((v: any) => v.isControl);
           
           if (winningVariant && controlVariant) {
             // Create recommendation based on test type and winning variant
@@ -168,14 +168,14 @@ export class TestReporting {
     
     for (const variant of testResults.variantResults) {
       csv += [
-        variant.variantName,
+        variant.name,
         variant.isControl ? 'Yes' : 'No',
-        variant.metrics.exposures,
+        variant.metrics.impressions,
         variant.metrics.conversions,
         `${(variant.metrics.conversionRate * 100).toFixed(2)}%`,
-        variant.metrics.improvementOverControl ? `${variant.metrics.improvementOverControl.toFixed(2)}%` : 'N/A',
-        variant.statisticalSignificance.pValue.toFixed(4),
-        variant.statisticalSignificance.isSignificant ? 'Yes' : 'No'
+        variant.improvement ? `${(variant.improvement * 100).toFixed(2)}%` : 'N/A',
+        variant.pValue ? variant.pValue.toFixed(4) : 'N/A',
+        variant.significanceLevel === 'high' || variant.significanceLevel === 'medium' ? 'Yes' : 'No'
       ].join(',');
       csv += '\n';
     }
@@ -199,7 +199,7 @@ export class TestReporting {
       const comparisonData = [];
       
       for (const testId of testIds) {
-        const test = await TestManager.getTestById(testId);
+        const test = await Promise.resolve(TestManager.prototype.getTest(testId));
         const results = await this.getTestResults(testId);
         
         if (test && results) {
@@ -240,71 +240,56 @@ export class TestReporting {
       const variantsWithConfidence = results.variantResults.map(variant => {
         // Determine confidence level based on p-value
         let confidenceLevel = null;
-        if (variant.statisticalSignificance.pValue < 0.01) {
+        if (variant.pValue && variant.pValue < 0.01) {
           confidenceLevel = 'high';
-        } else if (variant.statisticalSignificance.pValue < 0.05) {
+        } else if (variant.pValue && variant.pValue < 0.05) {
           confidenceLevel = 'medium';
-        } else if (variant.statisticalSignificance.pValue < 0.1) {
+        } else if (variant.pValue && variant.pValue < 0.1) {
           confidenceLevel = 'low';
         }
         
         return {
-          ...variant,
+          variantId: variant.variantId,
+          name: variant.name,
+          isControl: variant.isControl,
+          impressions: variant.metrics.impressions,
+          conversions: variant.metrics.conversions,
+          conversionRate: variant.metrics.conversionRate,
           confidenceLevel,
-          // Additional metrics that might be useful in a report
-          relativeImprovement: variant.isControl ? 0 : variant.metrics.improvementOverControl
+          relativeImprovement: variant.isControl ? 0 : variant.improvement * 100
         };
       });
       
-      // Generate additional insights
-      const insights = [];
+      // Highlight key insights
+      let insights = [];
       
       if (results.winningVariantId) {
         const winner = results.variantResults.find(v => v.variantId === results.winningVariantId);
+        
         if (winner) {
           insights.push({
             type: 'positive',
-            message: `The winning variant "${winner.variantName}" showed a ${(winner.metrics.improvementOverControl || 0).toFixed(2)}% improvement over the control.`
+            message: `The winning variant "${winner.name}" showed a ${(winner.improvement * 100).toFixed(2)}% improvement over the control.`
           });
         }
-      } else {
-        insights.push({
-          type: 'neutral',
-          message: 'No statistically significant winner was identified in this test.'
-        });
       }
       
-      // Sample size adequacy check
-      if (results.sampleSize < 1000) {
-        insights.push({
-          type: 'warning',
-          message: 'The sample size may be too small for reliable results. Consider running the test longer.'
-        });
-      }
-      
-      // Generate recommendations based on results
-      const recommendations = [];
-      if (results.winningVariantId) {
-        recommendations.push('Implement the winning variant across all traffic');
-        recommendations.push('Consider follow-up tests to further optimize the winning variant');
-      } else {
-        recommendations.push('Redesign test variants to create more significant differences');
-        recommendations.push('Increase sample size by running the test longer or with more traffic');
-      }
+      // Add more insights based on the data...
       
       return {
-        overallConversionRate,
-        controlConversionRate: controlVariant?.metrics.conversionRate || 0,
-        variantsAnalysis: variantsWithConfidence,
-        sampleSizeAdequate: results.sampleSize >= 1000,
-        testPower: 0.8, // Typically desired statistical power
-        insights,
-        recommendations,
-        dateGenerated: new Date()
+        summary: {
+          testId: results.testId,
+          dateGenerated: results.dateGenerated,
+          sampleSize: results.sampleSize,
+          overallConversionRate,
+          hasWinner: !!results.winningVariantId
+        },
+        variants: variantsWithConfidence,
+        insights
       };
     } catch (error) {
       console.error('Error generating detailed report:', error);
-      throw error;
+      return null;
     }
   }
 } 

@@ -2,8 +2,8 @@
  * Mock data store for pharmaceutical ad content
  */
 
-import { AdType } from '../types/ad';
 import { 
+  AdType,
   AdCompany, 
   AdContent, 
   AdDisplaySettings, 
@@ -107,73 +107,57 @@ export const TREATMENT_CATEGORIES: TreatmentCategory[] = [
     id: 'cardiology_hypertension',
     name: 'Hypertension',
     medicalCategory: 'cardiology',
-    medicalCategoryName: 'Cardiology',
-    keywords: ['hypertension', 'high blood pressure', 'blood pressure', 'antihypertensive'],
-    description: 'Treatments for managing hypertension (high blood pressure)',
-    preferredAdTypes: [AdType.SIDEBAR, AdType.TEXT]
+    relevantSpecialties: ['cardiology', 'primary care', 'internal medicine'],
+    description: 'Treatments for managing hypertension (high blood pressure)'
   },
   {
     id: 'cardiology_heart_failure',
     name: 'Heart Failure',
     medicalCategory: 'cardiology',
-    medicalCategoryName: 'Cardiology',
-    keywords: ['heart failure', 'HFrEF', 'HFpEF', 'cardiac failure', 'CHF'],
-    description: 'Treatments for managing heart failure conditions',
-    preferredAdTypes: [AdType.BANNER, AdType.SPONSORED_CONTENT]
+    relevantSpecialties: ['cardiology', 'internal medicine'],
+    description: 'Treatments for managing heart failure conditions'
   },
   {
     id: 'oncology_breast_cancer',
     name: 'Breast Cancer',
     medicalCategory: 'oncology',
-    medicalCategoryName: 'Oncology',
-    keywords: ['breast cancer', 'HER2', 'metastatic', 'hormone receptor'],
-    description: 'Treatments for breast cancer across various stages and types',
-    preferredAdTypes: [AdType.SPONSORED_CONTENT, AdType.SIDEBAR]
+    relevantSpecialties: ['oncology', 'surgery'],
+    description: 'Treatments for breast cancer across various stages and types'
   },
   {
     id: 'oncology_lung_cancer',
     name: 'Lung Cancer',
     medicalCategory: 'oncology',
-    medicalCategoryName: 'Oncology',
-    keywords: ['lung cancer', 'NSCLC', 'SCLC', 'non-small cell', 'small cell'],
-    description: 'Treatments for lung cancer, including targeted and immunotherapy options',
-    preferredAdTypes: [AdType.BANNER, AdType.TEXT]
+    relevantSpecialties: ['oncology', 'pulmonology'],
+    description: 'Treatments for lung cancer, including targeted and immunotherapy options'
   },
   {
     id: 'immunology_rheumatoid_arthritis',
     name: 'Rheumatoid Arthritis',
     medicalCategory: 'immunology',
-    medicalCategoryName: 'Immunology',
-    keywords: ['rheumatoid arthritis', 'RA', 'autoimmune', 'TNF inhibitor', 'DMARD'],
-    description: 'Treatments for rheumatoid arthritis including biologics and DMARDs',
-    preferredAdTypes: [AdType.SPONSORED_CONTENT, AdType.VIDEO]
+    relevantSpecialties: ['rheumatology', 'immunology'],
+    description: 'Treatments for rheumatoid arthritis including biologics and DMARDs'
   },
   {
     id: 'pulmonology_asthma',
     name: 'Asthma',
     medicalCategory: 'pulmonology',
-    medicalCategoryName: 'Pulmonology',
-    keywords: ['asthma', 'inhaler', 'bronchodilator', 'ICS', 'wheezing'],
-    description: 'Treatments for asthma management and prevention',
-    preferredAdTypes: [AdType.SIDEBAR, AdType.TEXT]
+    relevantSpecialties: ['pulmonology', 'allergy', 'primary care'],
+    description: 'Treatments for asthma management and prevention'
   },
   {
     id: 'neurology_multiple_sclerosis',
     name: 'Multiple Sclerosis',
     medicalCategory: 'neurology',
-    medicalCategoryName: 'Neurology',
-    keywords: ['multiple sclerosis', 'MS', 'demyelinating', 'RRMS', 'SPMS'],
-    description: 'Treatments for multiple sclerosis across various disease types',
-    preferredAdTypes: [AdType.SPONSORED_CONTENT, AdType.BANNER]
+    relevantSpecialties: ['neurology'],
+    description: 'Treatments for multiple sclerosis across various disease types'
   },
   {
     id: 'endocrinology_diabetes',
     name: 'Diabetes',
     medicalCategory: 'endocrinology',
-    medicalCategoryName: 'Endocrinology',
-    keywords: ['diabetes', 'type 2 diabetes', 'T2DM', 'insulin', 'hyperglycemia'],
-    description: 'Treatments for diabetes management and complications',
-    preferredAdTypes: [AdType.TEXT, AdType.SIDEBAR]
+    relevantSpecialties: ['endocrinology', 'primary care'],
+    description: 'Treatments for diabetes management and complications'
   }
 ];
 
@@ -191,18 +175,19 @@ export const AD_CONTENT: AdContent[] = [
   // Pfizer Hypertension Ads
   {
     id: generateId('pfizer_hypertension'),
-    name: 'Pfizer Hypertension Treatment Overview',
+    title: 'Pfizer Hypertension Treatment Overview',
+    description: 'Comprehensive portfolio of antihypertensive medications',
+    campaignId: 'PFIZER-HTN-2023',
+    adType: AdType.ENHANCED,
     company: PHARMA_COMPANIES.find(c => c.id === 'pfizer')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'cardiology_hypertension')!,
-    type: AdType.SIDEBAR,
+    treatmentCategoryId: 'cardiology_hypertension',
+    targetConditions: ['hypertension', 'high blood pressure'],
     creative: {
-      id: generateId('creative'),
-      headline: 'Innovative Solutions for Hypertension Management',
-      subheadline: 'Evidence-based approaches to blood pressure control',
-      bodyText: 'Discover Pfizer\'s comprehensive portfolio of antihypertensive medications designed to help physicians manage patients with hypertension across the spectrum of cardiovascular risk profiles.',
-      callToAction: 'Learn More About Our Treatment Options',
-      imageUrl: '/assets/images/hypertension-treatment.jpg',
-      thumbnailUrl: '/assets/images/hypertension-thumbnail.jpg'
+      displaySettings: {
+        backgroundColor: '#f8f9fa',
+        contentLayout: 'standard'
+      }
     },
     metadata: {
       campaignId: 'PFIZER-HTN-2023',
@@ -217,23 +202,35 @@ export const AD_CONTENT: AdContent[] = [
         timeWindowHours: 24
       }
     },
-    isActive: true
+    keywords: ['hypertension', 'blood pressure', 'cardiovascular'],
+    entityMappings: [
+      {
+        entity: 'hypertension',
+        type: 'condition',
+        confidence: 0.95
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 90 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: []
   },
   
   // Genentech Breast Cancer Ad
   {
     id: generateId('genentech_breast_cancer'),
-    name: 'Genentech HER2+ Breast Cancer Treatment',
+    title: 'Genentech HER2+ Breast Cancer Treatment',
+    description: 'Targeted treatment options for HER2+ breast cancer',
+    campaignId: 'GENENTECH-BC-2023',
+    adType: AdType.INTERACTIVE,
     company: PHARMA_COMPANIES.find(c => c.id === 'genentech')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'oncology_breast_cancer')!,
-    type: AdType.SPONSORED_CONTENT,
+    treatmentCategoryId: 'oncology_breast_cancer',
+    targetConditions: ['breast cancer', 'HER2+ breast cancer'],
     creative: {
-      id: generateId('creative'),
-      headline: 'Advancing the Standard of Care in HER2+ Breast Cancer',
-      subheadline: 'Latest clinical data and treatment options',
-      bodyText: 'Genentech continues to lead innovation in HER2+ breast cancer therapy with targeted treatment options that have shown significant improvements in progression-free and overall survival across multiple clinical trials.',
-      callToAction: 'Explore Clinical Evidence',
-      imageUrl: '/assets/images/breast-cancer-treatment.jpg',
       displaySettings: {
         backgroundColor: '#f0f7fc',
         contentLayout: 'expanded'
@@ -248,7 +245,21 @@ export const AD_CONTENT: AdContent[] = [
       maxImpressionsByUser: 5,
       abTestGroup: 'detailed_content'
     },
-    isActive: true
+    keywords: ['HER2+', 'breast cancer', 'targeted therapy'],
+    entityMappings: [
+      {
+        entity: 'breast cancer',
+        type: 'condition',
+        confidence: 0.98
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 120 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: []
   },
   
   // GSK Asthma Ad
@@ -283,56 +294,70 @@ export const AD_CONTENT: AdContent[] = [
   
   // Eli Lilly Diabetes Ad
   {
-    id: generateId('lilly_diabetes'),
-    name: 'Eli Lilly Diabetes Portfolio',
+    id: generateId('eli_lilly_diabetes'),
+    title: 'Eli Lilly Diabetes Portfolio',
+    description: 'Advanced treatments for diabetes management',
+    campaignId: 'LILLY-DIAB-2023',
+    adType: AdType.STANDARD,
     company: PHARMA_COMPANIES.find(c => c.id === 'eli_lilly')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'endocrinology_diabetes')!,
-    type: AdType.BANNER,
+    treatmentCategoryId: 'endocrinology_diabetes',
+    targetConditions: ['diabetes', 'type 2 diabetes'],
     creative: {
-      id: generateId('creative'),
-      headline: 'Advancing Diabetes Care',
-      subheadline: 'Innovative solutions for glycemic control',
-      bodyText: 'Eli Lilly\'s diabetes portfolio includes a comprehensive range of treatment options designed to address the diverse needs of patients with type 1 and type 2 diabetes.',
-      callToAction: 'Discover Our Latest Research',
-      imageUrl: '/assets/images/diabetes-management.jpg'
+      displaySettings: {
+        backgroundColor: '#f5f9ff',
+        contentLayout: 'standard'
+      }
     },
-    metadata: {
-      campaignId: 'LILLY-DM-2023',
-      targetAudience: ['endocrinologists', 'primary_care', 'diabetologists'],
-      keywords: ['diabetes', 'insulin', 'GLP-1', 'glycemic control'],
-      startDate: new Date('2023-03-01'),
-      priority: 8,
-      abTestGroup: 'concise_messaging'
-    },
-    isActive: true
+    keywords: ['diabetes', 'insulin', 'blood glucose'],
+    entityMappings: [
+      {
+        entity: 'diabetes',
+        type: 'condition',
+        confidence: 0.95
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 180 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: []
   },
   
   // Pfizer Rheumatoid Arthritis Ad
   {
-    id: generateId('pfizer_ra'),
-    name: 'Pfizer Rheumatoid Arthritis Treatment',
+    id: generateId('pfizer_rheumatoid_arthritis'),
+    title: 'Pfizer Rheumatoid Arthritis Treatment',
+    description: 'Innovative treatments for rheumatoid arthritis',
+    campaignId: 'PFIZER-RA-2023',
+    adType: AdType.STANDARD,
     company: PHARMA_COMPANIES.find(c => c.id === 'pfizer')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'immunology_rheumatoid_arthritis')!,
-    type: AdType.SPONSORED_CONTENT,
+    treatmentCategoryId: 'immunology_rheumatoid_arthritis',
+    targetConditions: ['rheumatoid arthritis', 'autoimmune'],
     creative: {
-      id: generateId('creative'),
-      headline: 'Effective Management of Rheumatoid Arthritis',
-      subheadline: 'Advanced therapies for symptom control and disease modification',
-      bodyText: 'Pfizer\'s immunology portfolio offers innovative treatment options for rheumatoid arthritis patients, with therapies designed to reduce inflammation, prevent joint damage, and improve quality of life.',
-      callToAction: 'Review Clinical Evidence',
-      imageUrl: '/assets/images/ra-treatment.jpg',
-      videoUrl: '/assets/videos/ra-mechanism.mp4'
+      displaySettings: {
+        backgroundColor: '#f5f9ff',
+        contentLayout: 'standard'
+      }
     },
-    metadata: {
-      campaignId: 'PFIZER-RA-2023',
-      targetAudience: ['rheumatologists', 'immunologists'],
-      keywords: ['rheumatoid arthritis', 'JAK inhibitor', 'autoimmune', 'DMARD'],
-      startDate: new Date('2023-01-15'),
-      endDate: new Date('2023-12-15'),
-      priority: 8,
-      maxImpressions: 8000
-    },
-    isActive: true
+    keywords: ['rheumatoid arthritis', 'RA', 'autoimmune'],
+    entityMappings: [
+      {
+        entity: 'rheumatoid arthritis',
+        type: 'condition',
+        confidence: 0.95
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 180 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: []
   },
   
   // Genentech Lung Cancer Ad
@@ -343,12 +368,13 @@ export const AD_CONTENT: AdContent[] = [
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'oncology_lung_cancer')!,
     type: AdType.SIDEBAR,
     creative: {
-      id: generateId('creative'),
-      headline: 'Precision Medicine in Lung Cancer',
-      subheadline: 'Targeted therapies based on molecular profiling',
-      bodyText: 'Genentech\'s approach to lung cancer treatment focuses on molecular profiling to match patients with targeted therapies that address specific driver mutations and immune mechanisms.',
-      callToAction: 'Learn About Biomarker Testing',
-      imageUrl: '/assets/images/lung-cancer-precision.jpg'
+      displaySettings: {
+        headline: 'Precision Medicine in Lung Cancer',
+        subheadline: 'Targeted therapies based on molecular profiling',
+        bodyText: 'Genentech\'s approach to lung cancer treatment focuses on molecular profiling to match patients with targeted therapies that address specific driver mutations and immune mechanisms.',
+        callToAction: 'Learn About Biomarker Testing',
+        imageUrl: '/assets/images/lung-cancer-precision.jpg'
+      }
     },
     metadata: {
       campaignId: 'GENENTECH-LC-2023',
@@ -368,12 +394,13 @@ export const AD_CONTENT: AdContent[] = [
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'neurology_multiple_sclerosis')!,
     type: AdType.BANNER,
     creative: {
-      id: generateId('creative'),
-      headline: 'Advancing MS Treatment Research',
-      subheadline: 'Focusing on disease modification and symptom management',
-      bodyText: 'GSK is committed to improving outcomes for patients with multiple sclerosis through ongoing research into novel mechanisms and treatment approaches that address both inflammation and neurodegeneration.',
-      callToAction: 'Explore Our Research Pipeline',
-      imageUrl: '/assets/images/ms-research.jpg'
+      displaySettings: {
+        headline: 'Advancing MS Treatment Research',
+        subheadline: 'Focusing on disease modification and symptom management',
+        bodyText: 'GSK is committed to improving outcomes for patients with multiple sclerosis through ongoing research into novel mechanisms and treatment approaches that address both inflammation and neurodegeneration.',
+        callToAction: 'Explore Our Research Pipeline',
+        imageUrl: '/assets/images/ms-research.jpg'
+      }
     },
     metadata: {
       campaignId: 'GSK-MS-2023',
@@ -394,11 +421,10 @@ export const AD_CONTENT: AdContent[] = [
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'cardiology_heart_failure')!,
     type: AdType.TEXT,
     creative: {
-      id: generateId('creative'),
-      headline: 'Optimizing Heart Failure Outcomes',
-      bodyText: 'Eli Lilly offers evidence-based approaches to heart failure management, with therapies designed to reduce hospitalizations, improve functional capacity, and extend survival in patients with HFrEF and HFpEF.',
-      callToAction: 'Review Treatment Guidelines',
       displaySettings: {
+        headline: 'Optimizing Heart Failure Outcomes',
+        bodyText: 'Eli Lilly offers evidence-based approaches to heart failure management, with therapies designed to reduce hospitalizations, improve functional capacity, and extend survival in patients with HFrEF and HFpEF.',
+        callToAction: 'Review Treatment Guidelines',
         contentLayout: 'compact'
       }
     },

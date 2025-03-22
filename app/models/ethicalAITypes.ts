@@ -57,40 +57,98 @@ export interface AdContentGuardrails {
 }
 
 /**
+ * Extended creative type for GuardrailedAdContent
+ */
+export interface EnhancedCreative {
+  displaySettings?: Record<string, any>;
+  headline: string;
+  bodyText: string;
+  imageUrl?: string;
+  videoUrl?: string;
+}
+
+/**
  * Extended AdContent with guardrails
  */
-export interface GuardrailedAdContent extends AdContent {
-  guardrails?: AdContentGuardrails;
-  // Additional properties required for guardrails
-  citations?: string[];
-  disclaimers?: string[];
-  regulatoryText?: string;
-  isDrugPromotion?: boolean;
-  drugBrandName?: string;
-  drugGenericName?: string;
+export interface GuardrailedAdContent {
+  // Base AdContent properties
+  id: string;
+  title: string;
+  description: string;
+  campaignId: string;
+  adType: string;
   type: string;
   company: {
     id: string;
     name: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    defaultDisplaySettings?: Record<string, any>;
   };
-  creative: {
-    headline: string;
-    bodyText: string;
-    imageUrl?: string;
-    videoUrl?: string;
+  treatmentCategory: {
+    id: string;
+    name: string;
   };
-  metadata: {
-    priority: number;
-    frequencyCap?: number;
-    maxImpressionsByUser?: number;
+  targetConditions: string[];
+  brandName?: string;
+  tags?: string[];
+  contentWarnings?: string[];
+  metadata?: Record<string, any>;
+  treatmentCategoryId: string;
+  genericName?: string;
+  manufacturer?: string;
+  imageUrl?: string;
+  templateId?: string;
+  callToAction?: {
+    text: string;
+    url: string;
+    trackingId: string;
   };
+  keywords: string[];
+  entityMappings: {
+    entity: string;
+    type: string;
+    confidence: number;
+  }[];
+  interactiveContent?: any;
+  videoUrl?: string;
+  microsimulationConfig?: {
+    modelId: string;
+    parameters: Record<string, any>;
+  };
+  knowledgeGraphConfig?: {
+    topics: string[];
+    depth: number;
+  };
+  createdAt: number;
+  updatedAt: number;
+  activeTo: number;
+  isActive: boolean;
+  regulatoryApproved: boolean;
+  disclaimers: string[];
+  references: {
+    title: string;
+    url: string;
+  }[];
+  
+  // Enhanced properties for guardrails
+  guardrails?: AdContentGuardrails;
+  creative: EnhancedCreative;
+  citations?: string[];
+  regulatoryText?: string;
+  isDrugPromotion?: boolean;
+  drugBrandName?: string;
+  drugGenericName?: string;
 }
 
 /**
  * Extended AdContentResponse with guardrails
  */
-export interface GuardrailedAdContentResponse extends AdContentResponse {
+export interface GuardrailedAdContentResponse {
   content: GuardrailedAdContent[];
+  totalFound: number;
+  confidenceScore?: number;
+  impressionId?: string;
   guardrailsApplied?: boolean;
 }
 

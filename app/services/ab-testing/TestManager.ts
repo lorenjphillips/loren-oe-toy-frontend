@@ -30,7 +30,7 @@ export class TestManager {
     const newTest: Test = {
       id: uuidv4(),
       ...test,
-      status: test.status || TestStatus.DRAFT,
+      status: test.status || 'draft',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -152,7 +152,7 @@ export class TestManager {
    */
   startTest(id: string): Test {
     return this.updateTest(id, { 
-      status: TestStatus.ACTIVE,
+      status: 'running',
       startDate: new Date()
     });
   }
@@ -165,7 +165,7 @@ export class TestManager {
    */
   stopTest(id: string): Test {
     return this.updateTest(id, { 
-      status: TestStatus.COMPLETED,
+      status: 'completed',
       endDate: new Date()
     });
   }
@@ -213,7 +213,7 @@ export class TestManager {
       throw new Error(`Test with ID ${testId} has no variants`);
     }
     
-    return this.variantAssigner.assignVariant(test, sessionId);
+    return VariantAssigner.assignVariant(test, sessionId);
   }
   
   /**
@@ -229,7 +229,7 @@ export class TestManager {
     }
     
     // Must have at least one variant for active tests
-    if (test.status === TestStatus.ACTIVE && (!test.variants || test.variants.length < 2)) {
+    if (test.status === 'running' && (!test.variants || test.variants.length < 2)) {
       throw new Error('Active test must have at least two variants');
     }
     

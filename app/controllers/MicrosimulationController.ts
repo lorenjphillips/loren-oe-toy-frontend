@@ -1,8 +1,55 @@
 import { Ad } from '../types/ad';
 import { MedicalClassification } from '../services/classification';
-import { SimulationNode, SimulationEdge, SimulationScenario } from '../models/microsimulation';
-import { microsimulationConfigService } from '../services/microsimulationConfig';
+
+// Define these interfaces based on how they're used in this file
+interface SimulationNode {
+  id: string;
+  type: string;
+  label: string;
+  title?: string;
+  description?: string;
+  data?: any;
+  x?: number;
+  y?: number;
+}
+
+interface SimulationEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  type?: string;
+  data?: any;
+}
+
+interface SimulationScenario {
+  id: string;
+  title: string;
+  description: string;
+  type?: string;
+  patientProfile: {
+    age: number;
+    gender: string;
+    condition: string;
+    history?: string[];
+  };
+  outcomes: {
+    id: string;
+    description: string;
+    probability: number;
+  }[];
+  treatmentOptions: {
+    id: string;
+    name: string;
+    description: string;
+    effectiveness: number;
+  }[];
+}
+
+import { MicrosimulationConfigService } from '../services/microsimulationConfig';
 import analyticsService from '../services/analytics';
+
+const microsimulationConfigService = new MicrosimulationConfigService();
 
 /**
  * Configuration for the microsimulation experience
