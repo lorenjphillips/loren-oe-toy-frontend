@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from '../types/ads';
+import { AnalyticsEvent, AnalyticsEventCategory, EventSource, EventContext, createAnalyticsEvent } from '../app/models/analytics/AnalyticsEvent';
 import { updateAdMetrics } from '../data/adRepository';
 
 // In a real application, this would be persisted to a database
@@ -16,14 +16,17 @@ export async function trackImpression(
   metadata?: Record<string, any>
 ): Promise<void> {
   // Create analytics event
-  const event: AnalyticsEvent = {
-    type: 'impression',
-    adId,
-    userId,
-    questionId,
-    timestamp: new Date(),
-    metadata
-  };
+  const event = createAnalyticsEvent(
+    'impression',
+    AnalyticsEventCategory.IMPRESSION,
+    { page: 'ad-display' },
+    {
+      adId,
+      userId,
+      questionId,
+      ...metadata
+    }
+  );
   
   // Store the event
   analyticsEvents.push(event);
@@ -48,14 +51,17 @@ export async function trackClick(
   metadata?: Record<string, any>
 ): Promise<void> {
   // Create analytics event
-  const event: AnalyticsEvent = {
-    type: 'click',
-    adId,
-    userId,
-    questionId,
-    timestamp: new Date(),
-    metadata
-  };
+  const event = createAnalyticsEvent(
+    'click',
+    AnalyticsEventCategory.ENGAGEMENT,
+    { page: 'ad-display' },
+    {
+      adId,
+      userId,
+      questionId,
+      ...metadata
+    }
+  );
   
   // Store the event
   analyticsEvents.push(event);
@@ -80,14 +86,17 @@ export async function trackConversion(
   metadata?: Record<string, any>
 ): Promise<void> {
   // Create analytics event
-  const event: AnalyticsEvent = {
-    type: 'conversion',
-    adId,
-    userId,
-    questionId,
-    timestamp: new Date(),
-    metadata
-  };
+  const event = createAnalyticsEvent(
+    'conversion',
+    AnalyticsEventCategory.CONVERSION,
+    { page: 'ad-display' },
+    {
+      adId,
+      userId,
+      questionId,
+      ...metadata
+    }
+  );
   
   // Store the event
   analyticsEvents.push(event);
@@ -115,12 +124,12 @@ export function getAnalyticsEvents(
   if (!filter) return [...analyticsEvents];
   
   return analyticsEvents.filter(event => {
-    if (filter.type && event.type !== filter.type) return false;
-    if (filter.adId && event.adId !== filter.adId) return false;
-    if (filter.userId && event.userId !== filter.userId) return false;
-    if (filter.questionId && event.questionId !== filter.questionId) return false;
-    if (filter.startDate && event.timestamp < filter.startDate) return false;
-    if (filter.endDate && event.timestamp > filter.endDate) return false;
+    if (filter.type && event.eventType !== filter.type) return false;
+    if (filter.adId && (!event.metadata || event.metadata.adId !== filter.adId)) return false;
+    if (filter.userId && (!event.metadata || event.metadata.userId !== filter.userId)) return false;
+    if (filter.questionId && (!event.metadata || event.metadata.questionId !== filter.questionId)) return false;
+    if (filter.startDate && event.context.timestamp < filter.startDate.getTime()) return false;
+    if (filter.endDate && event.context.timestamp > filter.endDate.getTime()) return false;
     return true;
   });
 } 

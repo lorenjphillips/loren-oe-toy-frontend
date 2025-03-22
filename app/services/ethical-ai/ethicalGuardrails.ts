@@ -10,6 +10,7 @@ import { MedicalClassification } from '../classification';
 // Basic interface for ad content
 interface AdContent {
   id: string;
+  name: string;
   title: string;
   description: string;
   company: {
@@ -22,6 +23,10 @@ interface AdContent {
   };
   tags?: string[];
   contentWarnings?: string[];
+  creative?: {
+    headline: string;
+    bodyText: string;
+  };
 }
 
 interface EthicalCheckResult {

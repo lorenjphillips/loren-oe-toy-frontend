@@ -43,6 +43,7 @@ export interface InteractiveContent {
  */
 export interface AdContent {
   id: string;
+  name: string;
   title: string;
   description: string;
   campaignId: string;
@@ -60,6 +61,11 @@ export interface AdContent {
   brandName?: string;
   creative?: {
     displaySettings?: Record<string, any>;
+    headline: string;
+    bodyText: string;
+    imageUrl?: string;
+    thumbnailUrl?: string;
+    videoUrl?: string;
   };
   tags?: string[];
   contentWarnings?: string[];

@@ -20,11 +20,6 @@ interface ExtendedAdContent extends AdContent {
   isDrugPromotion?: boolean;
 }
 
-interface ExtendedAdCreative {
-  displaySettings?: Record<string, any>;
-  bodyText?: string;
-}
-
 /**
  * Validates the clinical accuracy of ad content
  * 
@@ -56,8 +51,7 @@ export function validateClinicalAccuracy(adContent: AdContent) {
   
   if (typeRules?.keywords) {
     // Check for required medical keywords for this content type
-    const extendedCreative = adContent.creative as ExtendedAdCreative | undefined;
-    const bodyText = extendedCreative?.bodyText || '';
+    const bodyText = adContent.creative?.bodyText || '';
     
     const hasRequiredKeywords = typeRules.keywords.some(
       (keyword: string) => bodyText.includes(keyword)
@@ -138,8 +132,7 @@ export function validateCompliance(adContent: AdContent) {
   const config = getConfig();
   const issues: string[] = [];
   const extendedAdContent = adContent as ExtendedAdContent;
-  const extendedCreative = adContent.creative as ExtendedAdCreative | undefined;
-  const bodyText = extendedCreative?.bodyText || '';
+  const bodyText = adContent.creative?.bodyText || '';
   
   // Check for regulatory text where required
   if (config.requireRegulatoryText && 

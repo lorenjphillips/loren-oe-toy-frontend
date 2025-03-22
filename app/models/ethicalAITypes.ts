@@ -73,6 +73,7 @@ export interface EnhancedCreative {
 export interface GuardrailedAdContent {
   // Base AdContent properties
   id: string;
+  name: string;
   title: string;
   description: string;
   campaignId: string;
