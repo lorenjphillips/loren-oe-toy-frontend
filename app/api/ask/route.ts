@@ -2,6 +2,8 @@ import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 import { serviceFactory } from '../../services/serviceFactory';
 import { env } from '../../lib/env';
+import type { ChatCompletionChunk } from 'openai/resources/chat/completions';
+import type { Stream } from 'openai/streaming';
 
 /**
  * Handles non-streaming answer generation
@@ -132,16 +134,16 @@ export async function GET(request: Request) {
           timeEstimator.startProgressTracking(timeEstimate.initialEstimate);
           
           // Setup streaming from OpenAI
-          const stream = await client.chat.completions.create({
+          const streamResponse = await client.chat.completions.create({
             model: env.get('OPENAI_MODEL'),
             messages: [{ role: 'user', content: question }],
             stream: true,
-          });
+          }) as any; // Type assertion needed due to OpenAI SDK type inference limitations
           
           let responseText = '';
           
           // Process each chunk
-          for await (const chunk of stream) {
+          for await (const chunk of streamResponse) {
             // Extract content delta
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {

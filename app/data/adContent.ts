@@ -265,15 +265,31 @@ export const AD_CONTENT: AdContent[] = [
   // GSK Asthma Ad
   {
     id: generateId('gsk_asthma'),
-    name: 'GSK Asthma Management Solutions',
+    title: 'GSK Asthma Treatment',
+    description: 'Advanced asthma management options',
+    campaignId: 'GSK-ASTHMA-2023',
+    adType: AdType.STANDARD,
     company: PHARMA_COMPANIES.find(c => c.id === 'gsk')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'pulmonology_asthma')!,
-    type: AdType.TEXT,
+    treatmentCategoryId: 'pulmonology_asthma',
+    targetConditions: ['asthma', 'severe asthma'],
+    keywords: ['asthma', 'inhaler', 'ICS', 'exacerbation', 'maintenance'],
+    entityMappings: [
+      {
+        entity: 'asthma',
+        type: 'condition',
+        confidence: 0.95
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 180 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: [],
+    type: AdType.STANDARD,
     creative: {
-      id: generateId('creative'),
-      headline: 'Comprehensive Asthma Control',
-      bodyText: 'GSK offers a range of treatment options for asthma management, focusing on reducing exacerbations and improving quality of life for patients with persistent symptoms.',
-      callToAction: 'View Treatment Guidelines',
       displaySettings: {
         padding: 12,
         cornerRadius: 4
@@ -288,8 +304,7 @@ export const AD_CONTENT: AdContent[] = [
         count: 2,
         timeWindowHours: 48
       }
-    },
-    isActive: true
+    }
   },
   
   // Eli Lilly Diabetes Ad
@@ -363,10 +378,14 @@ export const AD_CONTENT: AdContent[] = [
   // Genentech Lung Cancer Ad
   {
     id: generateId('genentech_lung_cancer'),
-    name: 'Genentech Lung Cancer Precision Medicine',
+    adType: AdType.STANDARD,
+    title: 'Genentech Lung Cancer Precision Medicine',
+    description: 'Precision Medicine in Lung Cancer',
+    campaignId: 'GENENTECH-LC-2023',
     company: PHARMA_COMPANIES.find(c => c.id === 'genentech')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'oncology_lung_cancer')!,
-    type: AdType.SIDEBAR,
+    treatmentCategoryId: 'oncology_lung_cancer',
+    targetConditions: ['lung cancer', 'NSCLC'],
     creative: {
       displaySettings: {
         headline: 'Precision Medicine in Lung Cancer',
@@ -383,16 +402,34 @@ export const AD_CONTENT: AdContent[] = [
       priority: 9,
       maxImpressionsByUser: 4
     },
-    isActive: true
+    keywords: ['lung cancer', 'NSCLC', 'biomarker', 'targeted therapy', 'molecular profiling'],
+    entityMappings: [
+      {
+        entity: 'lung cancer',
+        type: 'condition',
+        confidence: 0.95
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 180 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: []
   },
   
   // GSK Multiple Sclerosis Ad
   {
     id: generateId('gsk_ms'),
-    name: 'GSK Multiple Sclerosis Research',
+    adType: AdType.STANDARD,
+    title: 'GSK Multiple Sclerosis Research',
+    description: 'Advancing MS Treatment Research',
+    campaignId: 'GSK-MS-2023',
     company: PHARMA_COMPANIES.find(c => c.id === 'gsk')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'neurology_multiple_sclerosis')!,
-    type: AdType.BANNER,
+    treatmentCategoryId: 'neurology_multiple_sclerosis',
+    targetConditions: ['multiple sclerosis', 'neurodegeneration'],
     creative: {
       displaySettings: {
         headline: 'Advancing MS Treatment Research',
@@ -410,16 +447,34 @@ export const AD_CONTENT: AdContent[] = [
       priority: 7,
       abTestGroup: 'research_focused'
     },
-    isActive: true
+    keywords: ['multiple sclerosis', 'neurodegeneration', 'B-cell therapy'],
+    entityMappings: [
+      {
+        entity: 'multiple sclerosis',
+        type: 'condition',
+        confidence: 0.95
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 180 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: []
   },
   
   // Eli Lilly Heart Failure Ad
   {
     id: generateId('lilly_heart_failure'),
-    name: 'Eli Lilly Heart Failure Management',
+    adType: AdType.STANDARD,
+    title: 'Eli Lilly Heart Failure Management',
+    description: 'Optimizing Heart Failure Outcomes',
+    campaignId: 'LILLY-HF-2023',
     company: PHARMA_COMPANIES.find(c => c.id === 'eli_lilly')!,
     treatmentCategory: TREATMENT_CATEGORIES.find(t => t.id === 'cardiology_heart_failure')!,
-    type: AdType.TEXT,
+    treatmentCategoryId: 'cardiology_heart_failure',
+    targetConditions: ['heart failure', 'HFrEF', 'HFpEF'],
     creative: {
       displaySettings: {
         headline: 'Optimizing Heart Failure Outcomes',
@@ -438,7 +493,21 @@ export const AD_CONTENT: AdContent[] = [
         timeWindowHours: 72
       }
     },
-    isActive: true
+    keywords: ['heart failure', 'HFrEF', 'HFpEF', 'GDMT', 'hospitalization'],
+    entityMappings: [
+      {
+        entity: 'heart failure',
+        type: 'condition',
+        confidence: 0.95
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    activeTo: Date.now() + 180 * 24 * 60 * 60 * 1000,
+    isActive: true,
+    regulatoryApproved: true,
+    disclaimers: [],
+    references: []
   }
 ];
 

@@ -2,18 +2,22 @@ import { Ad } from '../types/ad';
 import { MedicalClassification } from '../services/classification';
 
 // Define these interfaces based on how they're used in this file
-interface SimulationNode {
+export interface SimulationNode {
   id: string;
   type: string;
-  label: string;
   title?: string;
+  label?: string;
   description?: string;
   data?: any;
-  x?: number;
-  y?: number;
+  position?: { x: number; y: number };
+  options?: Array<{
+    id: string;
+    label: string;
+    description?: string;
+  }>;
 }
 
-interface SimulationEdge {
+export interface SimulationEdge {
   id: string;
   source: string;
   target: string;
@@ -22,23 +26,25 @@ interface SimulationEdge {
   data?: any;
 }
 
-interface SimulationScenario {
+export interface SimulationScenario {
   id: string;
   title: string;
   description: string;
   type?: string;
-  patientProfile: {
+  keywords?: string[];
+  complexity?: string;
+  patientProfile?: {
     age: number;
     gender: string;
     condition: string;
     history?: string[];
   };
-  outcomes: {
+  outcomes?: {
     id: string;
     description: string;
     probability: number;
   }[];
-  treatmentOptions: {
+  treatmentOptions?: {
     id: string;
     name: string;
     description: string;
@@ -46,10 +52,37 @@ interface SimulationScenario {
   }[];
 }
 
+// Extend the Ad interface to include categories property
+export interface ExtendedAd extends Omit<Ad, 'categories'> {
+  categories?: string[];
+}
+
+// Extend MedicalClassification to include categories
+export interface ExtendedMedicalClassification extends MedicalClassification {
+  categories?: string[];
+}
+
+// Create an extended version of the analytics service
+export interface AnalyticsService {
+  trackEvent: (data: any) => any;
+  // Add other methods from the actual service here if needed
+}
+
+// Create an extended version of the MicrosimulationConfigService
+export interface ExtendedMicrosimulationConfigService {
+  getScenarios: (
+    simulationType: string,
+    concepts: string[],
+    categories: string[]
+  ) => Promise<SimulationScenario[]>;
+}
+
 import { MicrosimulationConfigService } from '../services/microsimulationConfig';
 import analyticsService from '../services/analytics';
 
-const microsimulationConfigService = new MicrosimulationConfigService();
+// Cast the services to the extended types
+const extendedAnalyticsService = analyticsService as unknown as AnalyticsService;
+const extendedConfigService = new MicrosimulationConfigService() as unknown as ExtendedMicrosimulationConfigService;
 
 /**
  * Configuration for the microsimulation experience
@@ -91,8 +124,8 @@ class MicrosimulationController {
    */
   async generateSimulation(
     question: string,
-    classification: MedicalClassification,
-    adData?: Ad,
+    classification: ExtendedMedicalClassification,
+    adData?: ExtendedAd,
     config?: Partial<MicrosimulationConfig>
   ): Promise<MicrosimulationResponse> {
     try {
@@ -130,7 +163,7 @@ class MicrosimulationController {
       };
       
       // 7. Log this generation for analytics
-      analyticsService.trackEvent({
+      extendedAnalyticsService.trackEvent({
         type: 'microsimulation_generated',
         data: {
           scenarioId: scenario.id,
@@ -175,7 +208,7 @@ class MicrosimulationController {
    */
   private async extractMedicalConcepts(
     question: string,
-    classification: MedicalClassification
+    classification: ExtendedMedicalClassification
   ): Promise<string[]> {
     // In a real implementation, this would call a medical NLP service
     // For this example, we'll simulate the extraction
@@ -189,7 +222,7 @@ class MicrosimulationController {
     // Add the classification categories
     const concepts = new Set([
       ...keywords,
-      ...classification.categories || [],
+      ...(classification.categories || []),
     ]);
     
     return Array.from(concepts);
@@ -244,14 +277,14 @@ class MicrosimulationController {
   private async getSimulationScenario(
     simulationType: string,
     concepts: string[],
-    adData?: Ad
+    adData?: ExtendedAd
   ): Promise<SimulationScenario> {
     // In a real implementation, this would fetch from a database
     // or generate using an LLM
     
     // Try to fetch a pre-defined scenario from the microsimulation service
     try {
-      const scenarios = await microsimulationConfigService.getScenarios(
+      const scenarios = await extendedConfigService.getScenarios(
         simulationType,
         concepts,
         adData?.categories || []
@@ -281,7 +314,7 @@ class MicrosimulationController {
    */
   private async getTreatmentOptions(
     scenario: SimulationScenario,
-    adData?: Ad
+    adData?: ExtendedAd
   ): Promise<{
     id: string;
     name: string;
@@ -457,7 +490,7 @@ class MicrosimulationController {
     data: any
   ): Promise<any> {
     // Track the interaction for analytics
-    analyticsService.trackEvent({
+    extendedAnalyticsService.trackEvent({
       type: 'microsimulation_interaction',
       data: {
         interactionType,

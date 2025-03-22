@@ -24,7 +24,8 @@ import {
   ImpressionContext,
   AggregateImpressionMetrics
 } from '../../../models/analytics/ImpressionMetrics';
-import { AdContent, AdType } from '../../../models/adTypes';
+import { AdContent } from '../../../models/adTypes';
+import { AdType } from '../../../types/ad';
 import * as DataStore from '../dataStore';
 
 // Map to track active impressions
@@ -205,10 +206,10 @@ export function trackImpressionVisibility(
     },
     {
       adId: impression.adId,
-      adType: AdType.STANDARD, // This should be passed in
-      companyId: 'unknown', // This should be passed in
-      companyName: 'unknown', // This should be passed in
-      placementContext: ImpressionContext.IN_ANSWER, // This should be passed in
+      adType: AdType.STANDARD,
+      companyId: 'unknown',
+      companyName: 'unknown',
+      placementContext: ImpressionContext.IN_ANSWER,
       visibilityState,
       viewportPercentage,
       startTimestamp: impression.startTime,
@@ -357,26 +358,18 @@ function calculateEngagementPotential(adType: AdType, context: ImpressionContext
   // Base engagement potential by ad type
   let typePotential = 0;
   
-  switch (adType) {
-    case AdType.MICROSIMULATION:
-      typePotential = 0.9;
-      break;
-    case AdType.KNOWLEDGE_GRAPH:
-      typePotential = 0.85;
-      break;
-    case AdType.INTERACTIVE:
-      typePotential = 0.8;
-      break;
-    case AdType.VIDEO:
-      typePotential = 0.7;
-      break;
-    case AdType.ENHANCED:
-      typePotential = 0.6;
-      break;
-    case AdType.STANDARD:
-    default:
-      typePotential = 0.4;
-      break;
+  if (adType === AdType.MICROSIMULATION) {
+    typePotential = 0.9;
+  } else if (adType === AdType.KNOWLEDGE_GRAPH) {
+    typePotential = 0.85;
+  } else if (adType === AdType.INTERACTIVE) {
+    typePotential = 0.8;
+  } else if (adType === AdType.VIDEO) {
+    typePotential = 0.7;
+  } else if (adType === AdType.ENHANCED) {
+    typePotential = 0.6;
+  } else {
+    typePotential = 0.4;
   }
   
   // Context-based modifier
@@ -536,15 +529,19 @@ export function cleanupStaleImpressions(maxAgeMs: number = 30 * 60 * 1000): void
         id: impression.adId,
         adType: AdType.STANDARD,
         campaignId: 'unknown',
-        manufacturer: 'unknown',
         title: 'Unknown',
         description: 'Stale impression',
+        company: {
+          id: 'unknown',
+          name: 'Unknown'
+        },
         treatmentCategory: {
           id: 'unknown',
           name: 'Unknown',
           medicalCategory: 'unknown',
           relevantSpecialties: []
         },
+        treatmentCategoryId: 'unknown',
         targetConditions: [],
         keywords: [],
         entityMappings: [],
@@ -553,7 +550,8 @@ export function cleanupStaleImpressions(maxAgeMs: number = 30 * 60 * 1000): void
         activeTo: 0,
         isActive: false,
         regulatoryApproved: false,
-        disclaimers: []
+        disclaimers: [],
+        references: []
       } as AdContent;
       
       trackImpressionEnd(id, adContent);

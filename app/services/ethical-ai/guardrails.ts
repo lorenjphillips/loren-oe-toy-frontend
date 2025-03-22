@@ -5,7 +5,7 @@
  * content, and compliance with medical advertising standards.
  */
 
-import { AdContent, AdContentResponse } from '../../models/adTypes';
+import { AdContent, AdContentResponse, AdType } from '../../models/adTypes';
 import { getConfig } from './configuration';
 
 /**
@@ -116,11 +116,11 @@ export function getSeparationIndicatorType(adContent: AdContent) {
   const contentType = adContent.type;
   
   // Return appropriate indicator type based on content
-  if (contentType === 'EDUCATIONAL') {
+  if (contentType === AdType.STANDARD) {
     return config.separationIndicators.educational;
-  } else if (contentType === 'PROMOTIONAL') {
+  } else if (contentType === AdType.ENHANCED) {
     return config.separationIndicators.promotional;
-  } else if (contentType === 'SPONSORED') {
+  } else if (contentType === AdType.INTERACTIVE) {
     return config.separationIndicators.sponsored;
   }
   

@@ -5,7 +5,7 @@
  * transparency requirements, confidence thresholds, and feedback parameters.
  */
 
-import { AdType } from '../../types/ad';
+import { AdType } from '../../models/adTypes';
 
 /**
  * Configuration interface for ethical AI guardrails
@@ -61,10 +61,10 @@ const defaultConfig: EthicalAIConfig = {
   
   // Content validation rules by ad type
   validationRulesByType: {
-    [AdType.TEXT]: {
+    [AdType.STANDARD]: {
       keywords: ['treatment', 'therapy', 'medication', 'drug', 'clinical']
     },
-    [AdType.IMAGE]: {
+    [AdType.ENHANCED]: {
       keywords: ['treatment', 'therapy', 'medication', 'drug', 'clinical'],
       requiredElements: ['logo', 'disclaimer']
     },

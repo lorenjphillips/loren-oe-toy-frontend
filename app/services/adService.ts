@@ -1,4 +1,5 @@
-import { Ad, AdClick, AdImpression, AdTargetingOptions, AdType } from '../types/ad';
+import { Ad, AdClick, AdImpression, AdTargetingOptions } from '../types/ad';
+import { AdType } from '../types/adTypeUnified';
 
 /**
  * Mock database of ads

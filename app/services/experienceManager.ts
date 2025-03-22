@@ -1,8 +1,8 @@
 import { classifyMedicalQuestion, MedicalClassification } from './classification';
 import { contentTimingService } from './contentTiming';
-import { getQuestionComplexity } from './contextualRelevance';
+import { ContextualRelevanceAnalyzer } from './contextualRelevance';
 import { EnhancedMappingResult } from './confidenceScoring';
-import { AdType } from '../types/ad';
+import { AdType } from '../types/adTypeUnified';
 
 /**
  * Experience format types available in the system
@@ -72,11 +72,11 @@ class ExperienceManager {
       await classifyMedicalQuestion(question);
       
     // If wait time not provided, estimate it
-    const waitTimeMs = context.estimatedWaitTimeMs || 
-      await contentTimingService.estimateWaitTime(question, classification);
+    const waitTime = await contentTimingService.estimateTime(question, classification);
     
     // Get question complexity
-    const complexity = await getQuestionComplexity(question, classification);
+    const analyzer = new ContextualRelevanceAnalyzer();
+    const complexityResult = await analyzer.analyzeContextualRelevance(question, classification);
     
     // Determine device capabilities if not provided
     const deviceCapabilities = context.deviceCapabilities || this.detectDeviceCapabilities();
@@ -85,7 +85,7 @@ class ExperienceManager {
     const options = this.generateExperienceOptions({
       ...context,
       classification,
-      estimatedWaitTimeMs: waitTimeMs,
+      estimatedWaitTimeMs: waitTime,
       deviceCapabilities,
     });
     
@@ -93,7 +93,7 @@ class ExperienceManager {
     const selection = this.scoreAndSelectExperience(options, {
       ...context,
       classification,
-      estimatedWaitTimeMs: waitTimeMs,
+      estimatedWaitTimeMs: waitTime,
       deviceCapabilities, 
     });
     

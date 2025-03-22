@@ -2,16 +2,7 @@
  * Types for the ad delivery system
  */
 
-/**
- * Ad format types
- */
-export enum AdType {
-  TEXT = 'text',
-  BANNER = 'banner',
-  VIDEO = 'video',
-  SPONSORED_CONTENT = 'sponsored_content',
-  SIDEBAR = 'sidebar'
-}
+import { AdType } from './adTypeUnified';
 
 /**
  * Interface for an ad in the system

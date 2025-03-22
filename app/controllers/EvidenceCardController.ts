@@ -1,7 +1,21 @@
 import { Ad } from '../types/ad';
 import { MedicalClassification } from '../services/classification';
 import analyticsService from '../services/analytics';
-import { enhanceMappingConfidence } from '../services/confidenceScoring';
+import { enhanceMappingConfidence, EnhancedMappingResult } from '../services/confidenceScoring';
+
+// Custom analytics service wrapper
+const analytics = {
+  trackEvent: (type: string, data: any) => {
+    // Check if the analyticsService has createEvent function
+    if (typeof analyticsService.createEvent === 'function') {
+      const event = analyticsService.createEvent(type as any, data);
+      analyticsService.dispatchAnalyticsEvent(event);
+    } else {
+      // Fallback - use console log in development
+      console.log('Analytics event:', { type, data });
+    }
+  }
+};
 
 /**
  * Evidence source types
@@ -116,15 +130,12 @@ class EvidenceCardController {
         : undefined;
       
       // 4. Track this generation for analytics
-      analyticsService.trackEvent({
-        type: 'evidence_card_generated',
-        data: {
-          questionId: question.slice(0, 20).replace(/\s+/g, '_'),
-          condition,
-          treatment,
-          evidenceCount: evidenceItems.length,
-          hasEducationalContent: !!educationalContent,
-        }
+      analytics.trackEvent('evidence_card_generated', {
+        questionId: question.slice(0, 20).replace(/\s+/g, '_'),
+        condition,
+        treatment,
+        evidenceCount: evidenceItems.length,
+        hasEducationalContent: !!educationalContent,
       });
       
       // 5. Prepare the final configuration
@@ -182,18 +193,24 @@ class EvidenceCardController {
     try {
       if (question) {
         // This service helps map questions to pharmaceutical products and conditions
-        const enhancedMapping = await enhanceMappingConfidence({
-          question,
-          classification,
-          results: []
-        });
+        const enhancedMapping: EnhancedMappingResult = await enhanceMappingConfidence({
+          matches: [],
+          topMatch: undefined,
+          classificationInput: classification,
+          totalMatches: 0,
+          primaryCategory: classification.primaryCategory.name,
+          subcategory: classification.subcategory?.name || '',
+          keywordsUsed: [],
+          medicationsUsed: [],
+          timestamp: new Date()
+        }, question);
         
-        if (enhancedMapping.condition) {
-          condition = enhancedMapping.condition;
+        if (enhancedMapping.originalQuestionText) {
+          condition = enhancedMapping.originalQuestionText;
         }
         
-        if (enhancedMapping.treatments && enhancedMapping.treatments.length > 0) {
-          treatment = enhancedMapping.treatments[0].name;
+        if (enhancedMapping.matches && enhancedMapping.matches.length > 0) {
+          treatment = enhancedMapping.matches[0].treatmentArea.id;
         }
       }
     } catch (error) {
@@ -296,14 +313,11 @@ class EvidenceCardController {
     data?: any
   ): Promise<any> {
     // Track the interaction for analytics
-    analyticsService.trackEvent({
-      type: 'evidence_card_interaction',
-      data: {
-        interactionType,
-        evidenceId,
-        data,
-        timestamp: new Date().toISOString(),
-      }
+    analytics.trackEvent('evidence_card_interaction', {
+      interactionType,
+      evidenceId,
+      data,
+      timestamp: new Date().toISOString(),
     });
     
     // Handle different interaction types

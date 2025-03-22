@@ -54,10 +54,7 @@ export interface AdContent {
     secondaryColor?: string;
     defaultDisplaySettings?: Record<string, any>;
   };
-  treatmentCategory: {
-    id: string;
-    name: string;
-  };
+  treatmentCategory: TreatmentCategory;
   targetConditions: string[];
   brandName?: string;
   creative?: {

@@ -33,6 +33,7 @@ import { TopicCorrelation as TopicCorrelationType } from '../../../services/anal
 import { trendAnalysisService } from '../../../services/analytics/trends';
 import { QuestionContext } from '../../../types/analytics';
 import * as d3 from 'd3';
+import type { SimulationNodeDatum } from 'd3-force';
 
 interface TopicCorrelationProps {
   maxCorrelations?: number;
@@ -41,17 +42,21 @@ interface TopicCorrelationProps {
   height?: number;
 }
 
-// Define node and link types for the force graph
-interface Node {
+// Explicitly type the node to avoid DOM Node collision
+interface TopicNode extends SimulationNodeDatum {
   id: string;
   name: string;
   group: number;
   value: number;
+  x?: number;
+  y?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
-interface Link {
-  source: string;
-  target: string;
+interface TopicLink extends d3.SimulationLinkDatum<TopicNode> {
+  source: string | TopicNode;
+  target: string | TopicNode;
   value: number;
   isNovel: boolean;
 }
@@ -146,9 +151,9 @@ export default function TopicCorrelation({
     d3.select(svgRef.current).selectAll("*").remove();
     
     // Create data structure for d3 force layout
-    const nodes: Node[] = [];
+    const nodes: TopicNode[] = [];
     const nodeMap = new Map<string, boolean>();
-    const links: Link[] = [];
+    const links: TopicLink[] = [];
     
     // Add nodes and links
     correlations.forEach(correlation => {
@@ -201,14 +206,14 @@ export default function TopicCorrelation({
       .style("font-size", "12px");
     
     // Create force simulation
-    const simulation = d3.forceSimulation<Node, Link>(nodes)
-      .force("link", d3.forceLink<Node, Link>(links)
+    const simulation = d3.forceSimulation<TopicNode>(nodes)
+      .force("link", d3.forceLink<TopicNode, TopicLink>(links)
         .id(d => d.id)
         .distance(d => 150 - (d.value * 100)) // Stronger correlations have shorter distances
       )
-      .force("charge", d3.forceManyBody().strength(-400))
-      .force("center", d3.forceCenter(width / 2, graphHeight / 2))
-      .force("collide", d3.forceCollide().radius(30));
+      .force("charge", d3.forceManyBody<TopicNode>().strength(-400))
+      .force("center", d3.forceCenter<TopicNode>(width / 2, graphHeight / 2))
+      .force("collide", d3.forceCollide<TopicNode>().radius(30));
     
     // Create links
     const link = svg.append("g")
@@ -227,7 +232,7 @@ export default function TopicCorrelation({
       .enter().append("circle")
         .attr("r", 10)
         .attr("fill", d => d.group === 1 ? "#42A5F5" : "#66BB6A")
-        .call(d3.drag<SVGCircleElement, Node>()
+        .call(d3.drag<SVGCircleElement, TopicNode>()
           .on("start", dragstarted)
           .on("drag", dragged)
           .on("end", dragended));
@@ -248,10 +253,17 @@ export default function TopicCorrelation({
         tooltip
           .style("visibility", "visible")
           .html(`<strong>${d.name}</strong><br/>Topic ID: ${d.id}`);
-        
-        // Highlight connections
-        link.style("stroke-opacity", l => 
-          l.source.id === d.id || l.target.id === d.id ? 1 : 0.1);
+          
+        // Highlight links connected to this node
+        link
+          .style("stroke-opacity", l => 
+            (typeof l.source === 'object' && l.source.id === d.id) || 
+            (typeof l.target === 'object' && l.target.id === d.id) ? 1 : 0.2
+          )
+          .style("stroke-width", l => 
+            (typeof l.source === 'object' && l.source.id === d.id) || 
+            (typeof l.target === 'object' && l.target.id === d.id) ? l.value * 8 : l.value * 2
+          );
         
         d3.select(this).attr("stroke", "#000").attr("stroke-width", 2);
       })
@@ -271,8 +283,8 @@ export default function TopicCorrelation({
         tooltip
           .style("visibility", "visible")
           .html(`<strong>Correlation:</strong> ${d.value.toFixed(2)}<br/>
-                 <strong>Source:</strong> ${(d.source as Node).name}<br/>
-                 <strong>Target:</strong> ${(d.target as Node).name}<br/>
+                 <strong>Source:</strong> ${(d.source as TopicNode).name}<br/>
+                 <strong>Target:</strong> ${(d.target as TopicNode).name}<br/>
                  ${d.isNovel ? '<strong>Newly Identified Relationship</strong>' : ''}`);
         
         d3.select(this)
@@ -294,10 +306,10 @@ export default function TopicCorrelation({
     // Update positions on tick
     simulation.on("tick", () => {
       link
-        .attr("x1", d => Math.max(10, Math.min(width - 10, (d.source as Node).x!)))
-        .attr("y1", d => Math.max(10, Math.min(graphHeight - 10, (d.source as Node).y!)))
-        .attr("x2", d => Math.max(10, Math.min(width - 10, (d.target as Node).x!)))
-        .attr("y2", d => Math.max(10, Math.min(graphHeight - 10, (d.target as Node).y!)));
+        .attr("x1", d => Math.max(10, Math.min(width - 10, (d.source as TopicNode).x!)))
+        .attr("y1", d => Math.max(10, Math.min(graphHeight - 10, (d.source as TopicNode).y!)))
+        .attr("x2", d => Math.max(10, Math.min(width - 10, (d.target as TopicNode).x!)))
+        .attr("y2", d => Math.max(10, Math.min(graphHeight - 10, (d.target as TopicNode).y!)));
       
       node
         .attr("cx", d => Math.max(10, Math.min(width - 10, d.x!)))
@@ -309,18 +321,18 @@ export default function TopicCorrelation({
     });
     
     // Drag functions
-    function dragstarted(event: d3.D3DragEvent<SVGCircleElement, Node, Node>) {
+    function dragstarted(event: d3.D3DragEvent<SVGCircleElement, TopicNode, TopicNode>) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
     }
     
-    function dragged(event: d3.D3DragEvent<SVGCircleElement, Node, Node>) {
+    function dragged(event: d3.D3DragEvent<SVGCircleElement, TopicNode, TopicNode>) {
       event.subject.fx = event.x;
       event.subject.fy = event.y;
     }
     
-    function dragended(event: d3.D3DragEvent<SVGCircleElement, Node, Node>) {
+    function dragended(event: d3.D3DragEvent<SVGCircleElement, TopicNode, TopicNode>) {
       if (!event.active) simulation.alphaTarget(0);
       event.subject.fx = null;
       event.subject.fy = null;

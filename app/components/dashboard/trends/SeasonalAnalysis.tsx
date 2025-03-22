@@ -24,7 +24,7 @@ import {
   Divider
 } from '@mui/material';
 import {
-  Calendar as CalendarIcon,
+  CalendarToday as CalendarIcon,
   Info as InfoIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
@@ -380,15 +380,15 @@ export default function SeasonalAnalysis({
   const getPositionIcon = (position: string) => {
     switch (position) {
       case 'rising':
-        return <TrendingUpIcon fontSize="small" color="success" />;
+        return <TrendingUpIcon fontSize="small" />;
       case 'falling':
-        return <TrendingDownIcon fontSize="small" color="error" />;
+        return <TrendingDownIcon fontSize="small" />;
       case 'peak':
-        return <ArrowUpwardIcon fontSize="small" color="success" />;
+        return <ArrowUpwardIcon fontSize="small" />;
       case 'trough':
-        return <ArrowDownwardIcon fontSize="small" color="error" />;
+        return <ArrowDownwardIcon fontSize="small" />;
       default:
-        return null;
+        return <InfoIcon fontSize="small" />;
     }
   };
   
@@ -442,12 +442,20 @@ export default function SeasonalAnalysis({
                   {pattern.name}
                 </Typography>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                  <Chip 
-                    size="small"
-                    label={getPositionText(pattern.currentPosition)}
-                    color={getPositionColor(pattern.currentPosition) as "success" | "error" | "info"}
-                    icon={getPositionIcon(pattern.currentPosition)}
-                  />
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    bgcolor: getPositionColor(pattern.currentPosition) === 'success' ? 'success.light' : 
+                             getPositionColor(pattern.currentPosition) === 'error' ? 'error.light' : 'info.light',
+                    color: 'white',
+                    borderRadius: 10,
+                    px: 1,
+                    py: 0.5,
+                    fontSize: '0.75rem'
+                  }}>
+                    {getPositionIcon(pattern.currentPosition)}
+                    <Box component="span" sx={{ ml: 0.5 }}>{getPositionText(pattern.currentPosition)}</Box>
+                  </Box>
                   <Chip 
                     size="small"
                     label={`${(pattern.seasonalityStrength * 100).toFixed(0)}% seasonal`}

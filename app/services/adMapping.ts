@@ -6,25 +6,53 @@ import {
   MEDICAL_CATEGORY_MAP 
 } from '../data/pharmaCategories';
 
-// Define PharmaTreatmentArea interface since it's missing
+/**
+ * Extended version of a treatment area with keywords
+ */
 export interface PharmaTreatmentArea {
   id: string;
   category: string;
   priority: number;
   subcategories: string[];
   flagship_medications: string[];
-  keywords: string[]; // Add missing keywords property
+  keywords: string[];
 }
+
+/**
+ * Extended version of a pharma company with keywords 
+ */
+export interface ExtendedPharmaCompany extends Omit<PharmaCompany, 'treatment_areas'> {
+  keywords: string[];
+  treatment_areas: PharmaTreatmentArea[];
+}
+
+/**
+ * Interface for mapping options
+ */
+export interface AdMappingOptions {
+  minScore?: number;
+  maxResults?: number;
+  requireSubcategoryMatch?: boolean;
+}
+
+/**
+ * Default mapping options
+ */
+const DEFAULT_MAPPING_OPTIONS: Required<AdMappingOptions> = {
+  minScore: 20,
+  maxResults: 10,
+  requireSubcategoryMatch: false
+};
 
 /**
  * Interface for a matched company result
  */
 export interface CompanyMatch {
-  company: PharmaCompany;
+  company: ExtendedPharmaCompany;
   treatmentArea: PharmaTreatmentArea;
   score: number;          // Match score (higher = better match)
   categoryMatch: boolean; // Whether the primary category matched
-  subcategoryMatch: boolean; // Whether a specific subcategory matched
+  subcategoryMatch: boolean; // Whether a specific subcategory match
   keywordMatches: string[]; // Which keywords matched
   medicationMatches: string[]; // Which medications matched
 }
@@ -45,24 +73,50 @@ export interface PharmaMappingResult {
 }
 
 /**
- * Configuration options for ad mapping
+ * Check if a term is included in a medical category's related terms or subcategories
  */
-export interface AdMappingOptions {
-  minScore?: number;          // Minimum score to consider a valid match (0-100)
-  maxResults?: number;        // Maximum number of results to return
-  requireSubcategoryMatch?: boolean; // Require specific subcategory match
-  includeAllCompanies?: boolean; // Include all companies with at least some relevance
+function categoryIncludesTerm(category: MedicalCategory, term: string): boolean {
+  const searchTerm = term.toLowerCase();
+  return (
+    category.subcategories.some(s => s.toLowerCase().includes(searchTerm)) ||
+    (category.relatedTerms || []).some(t => t.toLowerCase().includes(searchTerm))
+  );
 }
 
 /**
- * Default mapping options
+ * Convert a base treatment area to an extended one with keywords
  */
-const DEFAULT_MAPPING_OPTIONS: AdMappingOptions = {
-  minScore: 30,
-  maxResults: 5,
-  requireSubcategoryMatch: false,
-  includeAllCompanies: false
-};
+function createExtendedTreatmentArea(area: PharmaCompany['treatment_areas'][0]): PharmaTreatmentArea {
+  // Generate keywords from subcategories and medications
+  const keywords = [
+    ...area.subcategories,
+    ...area.flagship_medications
+  ];
+
+  return {
+    ...area,
+    keywords: Array.from(new Set(keywords)) // Deduplicate keywords
+  };
+}
+
+/**
+ * Convert a base company to an extended one with keywords
+ */
+function createExtendedCompany(company: PharmaCompany): ExtendedPharmaCompany {
+  const extendedTreatmentAreas = company.treatment_areas.map(createExtendedTreatmentArea);
+  
+  // Generate company-level keywords from all treatment areas
+  const allKeywords = extendedTreatmentAreas.reduce((acc: string[], area) => {
+    acc.push(...area.keywords);
+    return acc;
+  }, []);
+
+  return {
+    ...company,
+    keywords: Array.from(new Set(allKeywords)), // Deduplicate keywords
+    treatment_areas: extendedTreatmentAreas
+  };
+}
 
 /**
  * Class to map medical classifications to pharmaceutical companies
@@ -93,7 +147,10 @@ export class PharmaAdMapper {
     const matches: CompanyMatch[] = [];
     
     // Step 1: Find all potential matches across all companies
-    for (const company of PHARMA_COMPANIES) {
+    for (const baseCompany of PHARMA_COMPANIES) {
+      // Convert to extended company with keywords
+      const company = createExtendedCompany(baseCompany);
+      
       // Check each treatment area for this company
       for (const treatmentArea of company.treatment_areas) {
         let score = 0;
@@ -114,9 +171,8 @@ export class PharmaAdMapper {
           }
         } else {
           // No direct category match, check if there's any overlap in the taxonomy
-          // This handles cases like "immunology" vs "rheumatology" which can overlap
-          const categorySubcategories = MEDICAL_CATEGORY_MAP[treatmentArea.category] || [];
-          if (categorySubcategories.includes(subcategory.id)) {
+          const category = MEDICAL_CATEGORY_MAP[treatmentArea.category];
+          if (category && category.subcategories.includes(subcategory.id)) {
             score += 20; // Partial match through subcategory
             categoryMatch = true;
           }
@@ -131,15 +187,23 @@ export class PharmaAdMapper {
         for (const keyword of keywords) {
           // Check if keyword matches treatment area keywords
           const lowercaseKeyword = keyword.toLowerCase();
-          if (treatmentArea.keywords.some(k => k.toLowerCase().includes(lowercaseKeyword) || 
-                                           lowercaseKeyword.includes(k.toLowerCase()))) {
+          const keywordMatchInTreatmentArea = treatmentArea.keywords.some(k => 
+            k.toLowerCase().includes(lowercaseKeyword) || 
+            lowercaseKeyword.includes(k.toLowerCase())
+          );
+          
+          if (keywordMatchInTreatmentArea) {
             score += 5; // Add points per keyword match
             keywordMatches.push(keyword);
           }
           
           // Check company keywords too
-          if (company.keywords.some(k => k.toLowerCase().includes(lowercaseKeyword) ||
-                                       lowercaseKeyword.includes(k.toLowerCase()))) {
+          const keywordMatchInCompany = company.keywords.some(k => 
+            k.toLowerCase().includes(lowercaseKeyword) ||
+            lowercaseKeyword.includes(k.toLowerCase())
+          );
+          
+          if (keywordMatchInCompany) {
             score += 2; // Company keyword matches are worth less than treatment area matches
             keywordMatches.push(keyword);
           }
@@ -150,20 +214,23 @@ export class PharmaAdMapper {
           const lowercaseMed = medication.toLowerCase();
           
           // Check if medication is in the company's flagship medications
-          if (treatmentArea.flagship_medications.some(m => m.toLowerCase() === lowercaseMed || 
-                                                      lowercaseMed.includes(m.toLowerCase()))) {
+          const medicationMatch = treatmentArea.flagship_medications.some(m => 
+            m.toLowerCase() === lowercaseMed || 
+            lowercaseMed.includes(m.toLowerCase())
+          );
+          
+          if (medicationMatch) {
             score += 15; // Significant bonus for medication match
             medicationMatches.push(medication);
           }
         }
         
         // Apply treatment area priority as a score multiplier
-        // Areas with higher priority for the company get a boost
         const priorityMultiplier = 1 + (treatmentArea.priority / 20); // e.g. priority 10 gives 1.5x multiplier
         score = Math.round(score * priorityMultiplier);
         
         // Only add matches that meet the minimum score requirement
-        if (score >= mergedOptions.minScore!) {
+        if (score >= mergedOptions.minScore) {
           matches.push({
             company,
             treatmentArea,
