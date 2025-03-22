@@ -1,8 +1,15 @@
 import OpenAI from 'openai';
 import { QuestionClassification } from '../types/ads';
 
+// Declare ChatCompletionMessage interface here since we can't import it directly
+interface ChatCompletionMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  name?: string;
+}
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || 'dummy-api-key-for-classifier',
 });
 
 /**
@@ -37,12 +44,18 @@ export async function classifyQuestion(
       Question: ${question}
     `;
 
+    const messages: ChatCompletionMessage[] = [
+      ...(history.filter(msg => 
+        typeof msg.role === 'string' && 
+        (msg.role === 'system' || msg.role === 'user' || msg.role === 'assistant')
+      ) as ChatCompletionMessage[]),
+      { role: 'system' as const, content: prompt },
+      { role: 'user' as const, content: question }
+    ];
+
     const chatCompletion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o',
-      messages: [
-        ...history,
-        { role: 'system', content: prompt },
-      ],
+      messages: messages,
       response_format: { type: 'json_object' },
     });
 

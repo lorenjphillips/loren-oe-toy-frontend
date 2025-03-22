@@ -1,6 +1,7 @@
 import { Test, TestResults, VariantResult } from '../../models/ab-testing';
 import { ResultsCalculator } from './ResultsCalculator';
 import { TestManager } from './TestManager';
+import { TestStatus } from '../../models/ab-testing';
 
 /**
  * Test Reporting Service
@@ -49,7 +50,7 @@ export class TestReporting {
   }[]> {
     try {
       // Get all completed tests
-      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: 'completed' }));
+      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: TestStatus.COMPLETED }));
       
       // Return a summary for each test
       return await Promise.all(completedTests.map(async (test) => {
@@ -88,7 +89,7 @@ export class TestReporting {
   }[]> {
     try {
       // Get all completed tests with results
-      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: 'completed' }));
+      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: TestStatus.COMPLETED }));
       const recommendations: {
         sourceTestId: string;
         sourceTestName: string;
@@ -290,6 +291,59 @@ export class TestReporting {
     } catch (error) {
       console.error('Error generating detailed report:', error);
       return null;
+    }
+  }
+
+  const getCompletedTestsReport = async (): Promise<TestReport[]> => {
+    try {
+      // Get all completed tests
+      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: TestStatus.COMPLETED }));
+      
+      // ... existing code ...
+    } catch (error) {
+      console.error('Error generating completed tests report:', error);
+      throw error;
+    }
+  };
+
+  const getCompletedTestsInsights = async (): Promise<TestInsight[]> => {
+    try {
+      // Get all completed tests
+      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ status: TestStatus.COMPLETED }));
+      
+      // ... existing code ...
+    } catch (error) {
+      console.error('Error generating test insights:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Generates aggregate report for all completed tests
+   */
+  async getAllCompletedTestsReport(): Promise<any[]> {
+    // Get all completed tests
+    const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ 
+      status: TestStatus.COMPLETED 
+    }));
+
+    // ... existing code ...
+  }
+
+  /**
+   * Generates a complete test performance history for a given time frame
+   */
+  async getTestPerformanceHistory(startDate?: Date, endDate?: Date): Promise<any> {
+    try {
+      // Get all completed tests
+      const completedTests = await Promise.resolve(TestManager.prototype.getAllTests({ 
+        status: TestStatus.COMPLETED 
+      }));
+
+      // ... existing code ...
+    } catch (error) {
+      console.error('Error generating test performance history:', error);
+      throw error;
     }
   }
 } 

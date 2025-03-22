@@ -4,7 +4,7 @@ import { createApiResponse, handleApiError } from '../../lib/api-utils';
 
 // Create OpenAI client for health check
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-health-check',
 });
 
 /**

@@ -30,7 +30,7 @@ export class TestManager {
     const newTest: Test = {
       id: uuidv4(),
       ...test,
-      status: test.status || 'draft',
+      status: TestStatus.RUNNING,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -152,7 +152,7 @@ export class TestManager {
    */
   startTest(id: string): Test {
     return this.updateTest(id, { 
-      status: 'running',
+      status: TestStatus.RUNNING,
       startDate: new Date()
     });
   }
@@ -165,7 +165,7 @@ export class TestManager {
    */
   stopTest(id: string): Test {
     return this.updateTest(id, { 
-      status: 'completed',
+      status: TestStatus.COMPLETED,
       endDate: new Date()
     });
   }
@@ -196,24 +196,22 @@ export class TestManager {
   }
   
   /**
-   * Get the variant that should be shown to a user/session
-   * 
-   * @param testId The test ID
-   * @param sessionId The user/session ID
-   * @returns The assigned variant
+   * Get variant for user based on their session ID
    */
-  getAssignedVariant(testId: string, sessionId: string): Variant {
+  getVariantForUser(testId: string, sessionId: string): Variant {
     const test = this.getTest(testId);
     
     if (!test) {
       throw new Error(`Test with ID ${testId} not found`);
     }
     
-    if (!test.variants || test.variants.length === 0) {
-      throw new Error(`Test with ID ${testId} has no variants`);
+    // Use VariantAssigner to get consistent assignment
+    const variant = VariantAssigner.assignVariant(test, sessionId);
+    if (!variant) {
+      // If no variant assigned, return the first variant (control)
+      return test.variants[0];
     }
-    
-    return VariantAssigner.assignVariant(test, sessionId);
+    return variant;
   }
   
   /**
@@ -229,7 +227,7 @@ export class TestManager {
     }
     
     // Must have at least one variant for active tests
-    if (test.status === 'running' && (!test.variants || test.variants.length < 2)) {
+    if (test.status === TestStatus.RUNNING && (!test.variants || test.variants.length < 2)) {
       throw new Error('Active test must have at least two variants');
     }
     

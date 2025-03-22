@@ -21,7 +21,8 @@ import {
   InputLabel,
   Chip,
   Stack,
-  CircularProgress
+  CircularProgress,
+  SelectChangeEvent
 } from '@mui/material';
 import axios from 'axios';
 import { Ad, AdCategory } from '../types/ads';
@@ -85,6 +86,16 @@ export default function AdManager() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+    const { name, value } = e.target;
+    if (name && currentAd) {
+      setCurrentAd({
+        ...currentAd,
+        [name]: value
+      });
+    }
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<string[]>, child: React.ReactNode) => {
     const { name, value } = e.target;
     if (name && currentAd) {
       setCurrentAd({
@@ -243,7 +254,7 @@ export default function AdManager() {
                 multiple
                 name="categories"
                 value={currentAd?.categories || []}
-                onChange={handleChange}
+                onChange={handleSelectChange}
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {(selected as string[]).map((value) => {
