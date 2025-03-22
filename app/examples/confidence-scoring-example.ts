@@ -2,6 +2,7 @@ import { classifyMedicalQuestion } from '../services/classification';
 import { mapQuestionToCompanies } from '../services/adMapping';
 import { enhanceMappingConfidence, shouldShowAd } from '../services/confidenceScoring';
 import { Ad } from '../types/ad';
+import { AdType } from '../types/adTypeUnified';
 
 /**
  * Example demonstrating the end-to-end flow with confidence scoring
@@ -106,47 +107,42 @@ export async function getRelevantAds(
   confidenceThreshold = 0.65
 ): Promise<{ ads: Ad[], showAds: boolean, confidence: number }> {
   try {
-    // Step 1: Classify the question
+    // First classify the question
     const classification = await classifyMedicalQuestion(question);
     
-    // Step 2: Map to pharmaceutical companies
+    // Map to pharmaceutical companies
     const mappingResult = mapQuestionToCompanies(classification);
     
-    // Step 3: Enhance with confidence scoring
-    const enhancedMapping = await enhanceMappingConfidence(
-      mappingResult, 
-      question,
-      { confidenceThreshold }
-    );
+    // Enhance with confidence scores
+    const enhancedMapping = await enhanceMappingConfidence(mappingResult, question);
     
-    // Step 4: Get a list of company IDs that have enough confidence
-    const highConfidenceCompanies = enhancedMapping.matches
-      .filter(match => match.shouldShowAd)
-      .map(match => match.company.id);
+    // Determine if ads should be shown
+    const showAds = shouldShowAd(enhancedMapping, confidenceThreshold);
     
-    // Step 5: Determine if we should show ads at all
-    const showAds = shouldShowAd(enhancedMapping);
-    
-    // Step 6: In a real implementation, we would fetch ads from these companies
-    // For this example, we'll just return mock data
-    const mockAds: Ad[] = showAds ? highConfidenceCompanies.map(companyId => ({
-      id: `ad-${Math.random().toString(36).substring(2, 9)}`,
-      title: `Ad from ${companyId}`,
-      body: `This is a relevant ad based on your question about ${classification.primaryCategory.name}`,
-      advertiser: companyId,
-      type: 'text' as any, // Using the enum value would be better in real code
-      categories: [classification.primaryCategory.id, classification.subcategory.id],
-      url: `https://example.com/${companyId}`,
-      active: true,
-      priority: 5
-    })) : [];
+    // Create mock ads
+    const ads: Ad[] = [];
+    if (showAds && enhancedMapping.matches.length > 0) {
+      // Take top 2 matches and create ads
+      enhancedMapping.matches.slice(0, 2).forEach(match => {
+        ads.push({
+          id: `ad-${match.company.id}-${match.treatmentArea.id}`,
+          title: `${match.company.name} treatment for ${match.treatmentArea.category}`,
+          body: `Learn about ${match.company.name}'s innovative approaches to ${match.treatmentArea.id.replace('_', ' ')}.`,
+          advertiser: match.company.name,
+          type: match.company.id.includes('gene') ? AdType.SPONSORED_CONTENT : AdType.TEXT,
+          categories: [match.treatmentArea.category],
+          url: `https://example.com/${match.company.id}/${match.treatmentArea.id}`,
+          active: true,
+          priority: match.confidenceScore * 10
+        });
+      });
+    }
     
     return {
-      ads: mockAds,
+      ads,
       showAds,
       confidence: enhancedMapping.overallConfidence
     };
-    
   } catch (error) {
     console.error('Error getting relevant ads:', error);
     return { ads: [], showAds: false, confidence: 0 };

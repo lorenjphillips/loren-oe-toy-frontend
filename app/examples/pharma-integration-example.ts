@@ -2,8 +2,7 @@ import { MedicalClassification, classifyMedicalQuestion } from '../services/clas
 import { mapQuestionToCompanies, PharmaMappingResult } from '../services/adMapping';
 import { Ad } from '../types/ad';
 import { getAdsByCategory, trackAdImpression, trackAdClick } from '../services/adService';
-import { enhancedAdService } from '../services/enhancedAdService';
-import { AdType } from '../types/adTypeUnified';
+import { AdType, isValidAdType } from '../types/adTypeUnified';
 
 /**
  * Example demonstrating the complete flow from question to ad delivery
@@ -150,6 +149,12 @@ function createMockAds(mappingResult: PharmaMappingResult): Ad[] {
         adType = AdType.TEXT;
         title = `Latest ${categoryName} Treatments`;
         body = `Learn about cutting-edge treatments for ${match.treatmentArea.id.replace('_', ' ')}.`;
+    }
+    
+    // Ensure we have a valid AdType by checking against the unified enum
+    // This prevents type mismatches between different AdType enums in the codebase
+    if (!isValidAdType(adType)) {
+      adType = AdType.TEXT; // Default to TEXT if we somehow have an invalid type
     }
     
     // Create the ad
