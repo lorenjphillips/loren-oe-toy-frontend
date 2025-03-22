@@ -11,6 +11,7 @@ import {
 import { styled } from '@mui/system';
 import { AdContent, AdDisplaySettings } from '../../models/adTypes';
 import { fadeIn, fadeInUp } from '../../styles/transitions';
+import Image from 'next/image';
 
 // Extended interfaces for our component
 interface ExtendedCompany {
@@ -206,14 +207,16 @@ const BaseAdTemplate: React.FC<BaseAdTemplateProps> = ({
         {/* Logo placement (conditional based on position) */}
         {(logoPosition === 'top' || logoPosition === 'left') && (
           <Box sx={getLogoContainerStyle(logoPosition)}>
-            <img 
-              src={company.logoUrl || `https://via.placeholder.com/120x40?text=${encodeURIComponent(company.name || 'Company')}`} 
-              alt={`${company.name || 'Company'} logo`} 
+            <Image 
+              src={company.logoUrl || `https://via.placeholder.com/120x40?text=${encodeURIComponent(company.name || 'Company')}`}
+              alt={`${company.name || 'Company'} logo`}
+              width={isHorizontalLogo ? 80 : 120}
+              height={40}
               style={{ 
                 maxWidth: isHorizontalLogo ? '80px' : '120px',
-                maxHeight: '40px',
+                height: 'auto',
                 objectFit: 'contain'
-              }} 
+              }}
             />
           </Box>
         )}
@@ -267,14 +270,16 @@ const BaseAdTemplate: React.FC<BaseAdTemplateProps> = ({
         {/* Logo placement (conditional based on position) */}
         {(logoPosition === 'bottom' || logoPosition === 'right') && (
           <Box sx={getLogoContainerStyle(logoPosition)}>
-            <img 
-              src={company.logoUrl || `https://via.placeholder.com/120x40?text=${encodeURIComponent(company.name || 'Company')}`} 
-              alt={`${company.name || 'Company'} logo`} 
+            <Image 
+              src={company.logoUrl || `https://via.placeholder.com/120x40?text=${encodeURIComponent(company.name || 'Company')}`}
+              alt={`${company.name || 'Company'} logo`}
+              width={isHorizontalLogo ? 80 : 120}
+              height={40}
               style={{ 
                 maxWidth: isHorizontalLogo ? '80px' : '120px',
-                maxHeight: '40px',
+                height: 'auto',
                 objectFit: 'contain'
-              }} 
+              }}
             />
           </Box>
         )}

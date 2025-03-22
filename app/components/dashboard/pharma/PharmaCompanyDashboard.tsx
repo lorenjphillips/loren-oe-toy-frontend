@@ -29,7 +29,7 @@ import MetricsOverview from '../MetricsOverview';
 import TimeseriesVisualizer from '../TimeseriesVisualizer';
 import CategoryBreakdown from '../CategoryBreakdown';
 import EngagementDetail from '../EngagementDetail';
-import { PharmaCompany, PharmaTreatmentArea, getCompanyById } from '../../../data/pharmaCategories';
+import { PharmaCompany, getCompanyById } from '../../../data/pharmaCategories';
 
 // Tabs panel component
 interface TabPanelProps {
@@ -60,6 +60,14 @@ function TabPanel(props: TabPanelProps) {
 
 export interface PharmaCompanyDashboardProps {
   companyId: string;
+}
+
+interface TreatmentArea {
+  id: string;
+  category: string;
+  priority: number;
+  subcategories: string[];
+  flagship_medications: string[];
 }
 
 export default function PharmaCompanyDashboard({ companyId }: PharmaCompanyDashboardProps) {
@@ -135,7 +143,7 @@ export default function PharmaCompanyDashboard({ companyId }: PharmaCompanyDashb
   }
   
   // Find the current treatment area
-  const currentArea = company.treatment_areas.find(area => area.id === treatmentArea) || company.treatment_areas[0];
+  const currentArea = company.treatment_areas.find((area: TreatmentArea) => area.id === treatmentArea) || company.treatment_areas[0];
   
   return (
     <Box>
@@ -204,7 +212,7 @@ export default function PharmaCompanyDashboard({ companyId }: PharmaCompanyDashb
             color={treatmentArea === 'all' ? 'primary' : 'default'}
             variant={treatmentArea === 'all' ? 'filled' : 'outlined'}
           />
-          {company.treatment_areas.map((area) => (
+          {company.treatment_areas.map((area: TreatmentArea) => (
             <Chip
               key={area.id}
               label={area.category.replace('_', ' ')}
@@ -227,7 +235,7 @@ export default function PharmaCompanyDashboard({ companyId }: PharmaCompanyDashb
             with flagship medications such as {currentArea.flagship_medications.join(', ')}.
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {currentArea.subcategories.map((subcategory) => (
+            {currentArea.subcategories.map((subcategory: string) => (
               <Chip
                 key={subcategory}
                 size="small"

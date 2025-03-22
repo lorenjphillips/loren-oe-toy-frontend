@@ -8,11 +8,18 @@
 export interface PharmaCompany {
   id: string;
   name: string;
-  logo: string;
+  logo_url: string;
   primaryColor: string;
   secondaryColor: string;
   priorityCategories: string[];
   description: string;
+  treatment_areas: Array<{
+    id: string;
+    category: string;
+    priority: number;
+    subcategories: string[];
+    flagship_medications: string[];
+  }>;
 }
 
 // Medical category interface
@@ -154,74 +161,82 @@ export const PHARMA_COMPANIES: PharmaCompany[] = [
   {
     id: 'pfizer',
     name: 'Pfizer',
-    logo: '/assets/logos/pfizer.svg',
+    logo_url: '/assets/logos/pfizer.svg',
     primaryColor: '#0093d0',
     secondaryColor: '#f26649',
     priorityCategories: ['oncology', 'infectious_disease', 'immunology'],
-    description: 'A global pharmaceutical company focused on developing innovative medicines and vaccines across multiple therapeutic areas.'
+    description: 'A global pharmaceutical company focused on developing innovative medicines and vaccines across multiple therapeutic areas.',
+    treatment_areas: []
   },
   {
     id: 'genentech',
     name: 'Genentech',
-    logo: '/assets/logos/genentech.svg',
+    logo_url: '/assets/logos/genentech.svg',
     primaryColor: '#0046ad',
     secondaryColor: '#d62228',
     priorityCategories: ['oncology', 'immunology', 'neurology'],
-    description: 'A biotechnology company discovering and developing medicines for people with serious and life-threatening diseases.'
+    description: 'A biotechnology company discovering and developing medicines for people with serious and life-threatening diseases.',
+    treatment_areas: []
   },
   {
     id: 'gsk',
     name: 'GSK',
-    logo: '/assets/logos/gsk.svg',
+    logo_url: '/assets/logos/gsk.svg',
     primaryColor: '#f36633',
     secondaryColor: '#151f6d',
     priorityCategories: ['respiratory', 'infectious_disease', 'oncology'],
-    description: 'A global healthcare company developing innovative medicines, vaccines, and consumer health products.'
+    description: 'A global healthcare company developing innovative medicines, vaccines, and consumer health products.',
+    treatment_areas: []
   },
   {
     id: 'lilly',
     name: 'Eli Lilly',
-    logo: '/assets/logos/lilly.svg',
+    logo_url: '/assets/logos/lilly.svg',
     primaryColor: '#e1261c',
     secondaryColor: '#0033a0',
     priorityCategories: ['endocrinology', 'oncology', 'neurology'],
-    description: 'A pharmaceutical company developing innovative medicines across multiple therapeutic areas with a focus on diabetes, oncology, and neuroscience.'
+    description: 'A pharmaceutical company developing innovative medicines across multiple therapeutic areas with a focus on diabetes, oncology, and neuroscience.',
+    treatment_areas: []
   },
   {
     id: 'amgen',
     name: 'Amgen',
-    logo: '/assets/logos/amgen.svg',
+    logo_url: '/assets/logos/amgen.svg',
     primaryColor: '#0063c3',
     secondaryColor: '#f7b11e',
     priorityCategories: ['oncology', 'immunology', 'cardiology'],
-    description: 'A biotechnology company committed to unlocking the potential of biology for patients suffering from serious illnesses.'
+    description: 'A biotechnology company committed to unlocking the potential of biology for patients suffering from serious illnesses.',
+    treatment_areas: []
   },
   {
     id: 'novartis',
     name: 'Novartis',
-    logo: '/assets/logos/novartis.svg',
+    logo_url: '/assets/logos/novartis.svg',
     primaryColor: '#0460a9',
     secondaryColor: '#8ebfed',
     priorityCategories: ['cardiology', 'immunology', 'neurology'],
-    description: 'A global healthcare company reimagining medicine to improve and extend people\'s lives.'
+    description: 'A global healthcare company reimagining medicine to improve and extend people\'s lives.',
+    treatment_areas: []
   },
   {
     id: 'roche',
     name: 'Roche',
-    logo: '/assets/logos/roche.svg',
+    logo_url: '/assets/logos/roche.svg',
     primaryColor: '#0a0635',
     secondaryColor: '#e41e26',
     priorityCategories: ['oncology', 'neurology', 'rare_disease'],
-    description: 'A leader in research-focused healthcare with combined strengths in pharmaceuticals and diagnostics.'
+    description: 'A leader in research-focused healthcare with combined strengths in pharmaceuticals and diagnostics.',
+    treatment_areas: []
   },
   {
     id: 'merck',
     name: 'Merck',
-    logo: '/assets/logos/merck.svg',
+    logo_url: '/assets/logos/merck.svg',
     primaryColor: '#00857c',
     secondaryColor: '#e2231a',
     priorityCategories: ['oncology', 'infectious_disease', 'cardiology'],
-    description: 'A global healthcare company working to help the world be well through its prescription medicines, vaccines, and biologic therapies.'
+    description: 'A global healthcare company working to help the world be well through its prescription medicines, vaccines, and biologic therapies.',
+    treatment_areas: []
   }
 ];
 

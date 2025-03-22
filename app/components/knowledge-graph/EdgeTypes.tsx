@@ -318,8 +318,27 @@ export function EdgeLegend({ types, strengths, className = '' }: EdgeLegendProps
   );
 }
 
-export default {
-  EdgeLine,
-  EdgeTypeBadge,
-  EdgeLegend
-}; 
+const edgeTypes = {
+  // Edge type definitions
+  treats: {
+    label: 'Treats',
+    color: '#4CAF50',
+    description: 'Treatment relationship between entities',
+    bidirectional: false
+  },
+  causes: {
+    label: 'Causes',
+    color: '#F44336',
+    description: 'Causal relationship between entities',
+    bidirectional: false
+  },
+  associates: {
+    label: 'Associates',
+    color: '#2196F3',
+    description: 'Association between entities',
+    bidirectional: true
+  },
+  // Add other edge types as needed
+};
+
+export default edgeTypes; 

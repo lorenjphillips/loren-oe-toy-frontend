@@ -224,7 +224,7 @@ export default function ExecutiveOverview({ companyId }: ExecutiveOverviewProps)
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, dashboardContext.filters]);
+  }, [companyId, dashboardContext]);
   
   // Filter insights to show only high and critical impact
   const priorityInsights = executiveSummary?.insights.filter(

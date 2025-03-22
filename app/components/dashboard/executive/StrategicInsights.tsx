@@ -401,8 +401,15 @@ export default function StrategicInsights({ companyId }: StrategicInsightsProps)
       setLoading(true);
       try {
         const { dateRange, filters } = dashboardContext;
+        const effectiveCompanyId = companyId ?? dashboardContext.selectedCompany;
+        
+        if (!effectiveCompanyId) {
+          console.error('No company selected');
+          return;
+        }
+
         const summary = await executiveInsightsService.generateExecutiveInsights(
-          companyId || dashboardContext.selectedCompany,
+          effectiveCompanyId,
           dateRange,
           filters
         );
