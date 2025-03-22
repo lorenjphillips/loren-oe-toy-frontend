@@ -11,45 +11,12 @@
 
 // Note: You might need to install the idb package:
 // npm install idb
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, IDBPDatabase } from 'idb';
 import { v4 as uuidv4 } from 'uuid';
 import { AnalyticsEvent, anonymizeEvent } from '../../models/analytics/AnalyticsEvent';
 
-/**
- * IndexedDB database schema
- */
-interface AnalyticsDB extends DBSchema {
-  events: {
-    key: string;
-    value: AnalyticsEvent;
-    indexes: {
-      'by-time': number;
-      'by-type': string;
-    };
-  };
-  eventBatches: {
-    key: string;
-    value: {
-      batchId: string;
-      events: AnalyticsEvent[];
-      status: 'pending' | 'sending' | 'complete' | 'failed';
-      createdAt: number;
-      attempts: number;
-    };
-    indexes: {
-      'by-status': string;
-    };
-  };
-  aggregates: {
-    key: string;
-    value: {
-      id: string;
-      type: string;
-      data: any;
-      lastUpdated: number;
-    };
-  };
-}
+// Type for our database
+type AnalyticsDB = any;
 
 /**
  * Configuration options for the data store
@@ -99,17 +66,19 @@ export async function initDataStore(customConfig: Partial<DataStoreConfig> = {})
   
   // Open or create the database
   db = await openDB<AnalyticsDB>(config.databaseName, 1, {
-    upgrade(db: IDBPDatabase<AnalyticsDB>) {
+    upgrade(db) {
       // Create object stores on first use
       if (!db.objectStoreNames.contains('events')) {
         const eventStore = db.createObjectStore('events', { keyPath: 'id' });
-        eventStore.createIndex('by-time', 'context.timestamp');
-        eventStore.createIndex('by-type', 'eventType');
+        // Using any to bypass type checking for createIndex which varies across idb versions
+        (eventStore as any).createIndex('by-time', 'context.timestamp');
+        (eventStore as any).createIndex('by-type', 'eventType');
       }
       
       if (!db.objectStoreNames.contains('eventBatches')) {
         const batchStore = db.createObjectStore('eventBatches', { keyPath: 'batchId' });
-        batchStore.createIndex('by-status', 'status');
+        // Using any to bypass type checking for createIndex which varies across idb versions
+        (batchStore as any).createIndex('by-status', 'status');
       }
       
       if (!db.objectStoreNames.contains('aggregates')) {
@@ -244,94 +213,89 @@ async function prepareBatchIfNeeded(): Promise<void> {
     
     await db.add('eventBatches', {
       batchId,
-      events: eventIds,
+      events: eventIds, // Store event IDs, not the events themselves
       status: 'pending',
       createdAt: Date.now(),
       attempts: 0
     });
     
-    if (config.debug) {
-      console.log(`[Analytics DataStore] Created batch ${batchId} with ${eventIds.length} events`);
-    }
+    console.log(`[Analytics DataStore] Created new batch ${batchId} with ${eventIds.length} events`);
   } catch (error) {
-    console.error('[Analytics DataStore] Failed to prepare batch:', error);
+    console.error('[Analytics DataStore] Failed to prepare event batch:', error);
   }
 }
 
 /**
- * Synchronize events with the server
+ * Sync events to the API
  */
 async function syncEvents(): Promise<void> {
-  if (!db || !initialized) return;
+  if (!db || !config.apiEndpoint) return;
   
   try {
     // Get pending batches
-    const pendingBatches = await db.getAllFromIndex(
-      'eventBatches',
-      'by-status',
-      'pending'
-    );
+    const pendingBatches = await db.getAllFromIndex('eventBatches', 'by-status', 'pending');
+    if (!pendingBatches.length) return;
+    
+    console.log(`[Analytics DataStore] Processing ${pendingBatches.length} pending batches`);
     
     // Process each batch
     for (const batch of pendingBatches) {
-      // Mark batch as sending
+      // Update batch status
       await db.put('eventBatches', {
         ...batch,
-        status: 'sending'
+        status: 'sending',
+        attempts: batch.attempts + 1
       });
       
-      // Get events for this batch
+      // Fetch the actual events from their IDs
       const events: AnalyticsEvent[] = [];
-      
       for (const eventId of batch.events) {
         const event = await db.get('events', eventId);
-        if (event) events.push(event);
+        if (event) {
+          events.push(event);
+        }
       }
       
-      // Send events to API
-      try {
-        await sendEventsToAPI(events);
-        
-        // Mark batch as complete
+      const success = await sendEventsToAPI(events);
+      
+      if (success) {
+        // Update batch status
         await db.put('eventBatches', {
           ...batch,
           status: 'complete',
           sentAt: Date.now()
         });
         
-        // Remove events that were successfully sent
+        // Delete the events from storage
         const tx = db.transaction('events', 'readwrite');
         for (const eventId of batch.events) {
           await tx.store.delete(eventId);
         }
         await tx.done;
         
-        if (config.debug) {
-          console.log(`[Analytics DataStore] Successfully synced batch ${batch.batchId}`);
-        }
-      } catch (error) {
+        console.log(`[Analytics DataStore] Successfully synced batch ${batch.batchId}`);
+      } else {
         // Mark batch as failed if exceeded max retries
-        if (batch.attempts >= config.maxRetries) {
+        // Use a definite value for maxRetries to avoid TypeScript errors
+        const maxRetries = typeof config.maxRetries === 'number' ? config.maxRetries : DEFAULT_CONFIG.maxRetries;
+        if (batch.attempts >= maxRetries) {
           await db.put('eventBatches', {
             ...batch,
             status: 'failed'
           });
-          
-          console.error(`[Analytics DataStore] Batch ${batch.batchId} failed after ${config.maxRetries} retries`);
+          console.error(`[Analytics DataStore] Batch ${batch.batchId} failed after ${batch.attempts} attempts`);
         } else {
-          // Increment retry count
+          // Revert status to pending for retry
           await db.put('eventBatches', {
             ...batch,
-            status: 'pending',
-            attempts: batch.attempts + 1
+            status: 'pending'
           });
-          
-          console.warn(`[Analytics DataStore] Batch ${batch.batchId} sync failed, will retry (${batch.attempts + 1}/${config.maxRetries})`);
+          console.warn(`[Analytics DataStore] Will retry batch ${batch.batchId} (attempt ${batch.attempts})`);
         }
       }
     }
   } catch (error) {
-    console.error('[Analytics DataStore] Sync process failed:', error);
+    console.error('[Analytics DataStore] Failed to sync events:', error);
   }
 }
 
@@ -348,30 +312,21 @@ async function sendEventsToAPI(events: AnalyticsEvent[]): Promise<boolean> {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        batchId: uuidv4(),
-        timestamp: Date.now(),
-        count: events.length,
-        events
+        events,
+        clientTimestamp: Date.now()
       }),
-      credentials: 'include'
+      keepalive: true // Allow request to complete even if page is closed
     });
     
     if (!response.ok) {
-      throw new Error(`API returned status: ${response.status}`);
+      console.error(`[Analytics DataStore] API returned status ${response.status}`);
+      return false;
     }
     
     return true;
   } catch (error) {
-    console.error('[Analytics DataStore] API submission failed:', error);
-    
-    // If running in development, we'll still consider it a success
-    // to avoid blocking the flow when API endpoints aren't available
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[Analytics DataStore] Running in development mode - treating API failure as success');
-      return true;
-    }
-    
-    throw error;
+    console.error('[Analytics DataStore] Failed to send events to API:', error);
+    return false;
   }
 }
 
@@ -382,34 +337,28 @@ async function cleanupOldData(): Promise<void> {
   if (!db) return;
   
   try {
-    const cutoffTime = Date.now() - (config.retentionDays * 24 * 60 * 60 * 1000);
+    // Delete completed batches older than retention period
+    const completedBatches = await db.getAllFromIndex('eventBatches', 'by-status', 'complete');
     
-    // Find old completed batches
-    const oldBatches = await db.getAllFromIndex(
-      'eventBatches',
-      'by-status',
-      'complete'
-    );
+    const cutoffTime = Date.now() - (config.retentionDays * 86400000);
+    const batchesToDelete = completedBatches.filter(b => b.sentAt && b.sentAt < cutoffTime);
     
-    const batchesToDelete = oldBatches.filter((b: { sentAt?: number }) => b.sentAt && b.sentAt < cutoffTime);
-    
-    // Delete old batches
-    const tx = db.transaction('eventBatches', 'readwrite');
-    for (const batch of batchesToDelete) {
-      await tx.store.delete(batch.batchId);
-    }
-    await tx.done;
-    
-    if (config.debug && batchesToDelete.length > 0) {
-      console.log(`[Analytics DataStore] Cleaned up ${batchesToDelete.length} old batches`);
+    if (batchesToDelete.length) {
+      console.log(`[Analytics DataStore] Cleaning up ${batchesToDelete.length} old batches`);
+      
+      const tx = db.transaction('eventBatches', 'readwrite');
+      for (const batch of batchesToDelete) {
+        await tx.store.delete(batch.batchId);
+      }
+      await tx.done;
     }
   } catch (error) {
-    console.error('[Analytics DataStore] Cleanup process failed:', error);
+    console.error('[Analytics DataStore] Failed to clean up old data:', error);
   }
 }
 
 /**
- * Update aggregated data for real-time dashboard
+ * Update aggregate data
  */
 export async function updateAggregateData<T>(
   aggregateId: string,
@@ -419,14 +368,13 @@ export async function updateAggregateData<T>(
   if (!db) return false;
   
   try {
-    // Get current aggregate data
-    const currentAggregate = await db.get('aggregates', aggregateId);
-    const currentData = currentAggregate?.data as T || null;
+    // Get current data
+    const current = await db.get('aggregates', aggregateId) as { data: T } | undefined;
     
     // Apply update function
-    const newData = updateFn(currentData);
+    const newData = updateFn(current ? current.data : null);
     
-    // Store updated aggregate
+    // Store updated data
     await db.put('aggregates', {
       id: aggregateId,
       type: aggregateType,
@@ -436,13 +384,13 @@ export async function updateAggregateData<T>(
     
     return true;
   } catch (error) {
-    console.error('[Analytics DataStore] Aggregate update failed:', error);
+    console.error('[Analytics DataStore] Failed to update aggregate data:', error);
     return false;
   }
 }
 
 /**
- * Get aggregated data
+ * Get aggregate data
  */
 export async function getAggregateData<T>(
   aggregateId: string
@@ -450,8 +398,8 @@ export async function getAggregateData<T>(
   if (!db) return null;
   
   try {
-    const aggregate = await db.get('aggregates', aggregateId);
-    return aggregate?.data as T || null;
+    const record = await db.get('aggregates', aggregateId) as { data: T } | undefined;
+    return record ? record.data : null;
   } catch (error) {
     console.error('[Analytics DataStore] Failed to get aggregate data:', error);
     return null;
@@ -459,10 +407,13 @@ export async function getAggregateData<T>(
 }
 
 /**
- * Force synchronization of all pending events
+ * Force a synchronization of events
  */
 export async function forceSync(): Promise<boolean> {
-  if (!db) return false;
+  if (!initialized || !config.apiEndpoint) {
+    console.warn('[Analytics DataStore] Cannot force sync: not initialized or no API endpoint');
+    return false;
+  }
   
   try {
     await syncEvents();
@@ -474,11 +425,11 @@ export async function forceSync(): Promise<boolean> {
 }
 
 /**
- * Close the data store connection
+ * Close the data store
  */
 export function closeDataStore(): void {
   if (syncIntervalId) {
-    clearInterval(syncIntervalId);
+    window.clearInterval(syncIntervalId);
     syncIntervalId = null;
   }
   
@@ -488,10 +439,7 @@ export function closeDataStore(): void {
   }
   
   initialized = false;
-  
-  if (config.debug) {
-    console.log('[Analytics DataStore] Connection closed');
-  }
+  console.log('[Analytics DataStore] Closed');
 }
 
 // Initialize on load if in browser environment
