@@ -25,7 +25,7 @@ import {
   AggregateImpressionMetrics
 } from '../../../models/analytics/ImpressionMetrics';
 import { AdContent } from '../../../models/adTypes';
-import { AdType } from '../../../types/ad';
+import { AdType } from '../../../types/adTypeUnified';
 import * as DataStore from '../dataStore';
 
 // Map to track active impressions

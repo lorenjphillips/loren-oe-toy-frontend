@@ -7,7 +7,7 @@
  */
 
 import { AnalyticsEvent, AnalyticsEventCategory } from './AnalyticsEvent';
-import { AdType } from '../../types/ad';
+import { AdType } from '../../types/adTypeUnified';
 
 /**
  * Visibility states for impression tracking

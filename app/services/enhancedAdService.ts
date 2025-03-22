@@ -1,4 +1,5 @@
-import { Ad, AdTargetingOptions, AdType } from '../types/ad';
+import { Ad, AdTargetingOptions } from '../types/ad';
+import { AdType } from '../types/adTypeUnified';
 import { getAdsByCategory } from './adService';
 import { MedicalClassification } from './classification';
 import { classifyMedicalQuestion } from './classification';

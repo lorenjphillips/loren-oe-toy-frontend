@@ -7,7 +7,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { AdContent, TreatmentCategory } from '../models/adTypes';
-import { AdType } from '../types/ad';
+import { AdType, toAdType } from '../types/adTypeUnified';
 
 // Create a directory for storing analytics data if not available locally
 let sessionId: string;
@@ -190,17 +190,17 @@ export function trackImpressionStart(
   const event = createEvent(AnalyticsEventType.IMPRESSION_START, {
     id: eventId,
     adId: adContent.id,
-    adType: adContent.type,
+    adType: adContent.adType ? adContent.adType : undefined,
     companyId: adContent.company.id,
     companyName: adContent.company.name,
     questionCategory: adContent.treatmentCategory.medicalCategory,
     treatmentCategory: adContent.treatmentCategory.id,
     confidenceScore,
     metadata: {
-      adName: adContent.name,
+      adName: adContent.title || 'Untitled Ad', // Use title as fallback for name
       isActive: adContent.isActive,
-      priority: adContent.metadata.priority,
-      campaignId: adContent.metadata.campaignId
+      priority: adContent.metadata?.priority,
+      campaignId: adContent.metadata?.campaignId
     }
   });
   

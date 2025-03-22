@@ -1,7 +1,9 @@
 import { MedicalClassification, classifyMedicalQuestion } from '../services/classification';
 import { mapQuestionToCompanies, PharmaMappingResult } from '../services/adMapping';
-import { Ad, AdType } from '../types/ad';
+import { Ad } from '../types/ad';
 import { getAdsByCategory, trackAdImpression, trackAdClick } from '../services/adService';
+import { enhancedAdService } from '../services/enhancedAdService';
+import { AdType } from '../types/adTypeUnified';
 
 /**
  * Example demonstrating the complete flow from question to ad delivery

@@ -298,17 +298,20 @@ export async function getAndTrackAdContent(
  * @returns The recommended ad type
  */
 export function getBestAdTypeForTreatment(treatmentCategory: TreatmentCategory): AdType {
-  const preferredAdTypes = (treatmentCategory as any).preferredAdTypes;
+  const { medicalCategory } = treatmentCategory;
   
-  if (preferredAdTypes && preferredAdTypes.length > 0) {
-    return preferredAdTypes[0];
+  switch (medicalCategory) {
+    case 'pharmaceutical':
+      return AdType.ENHANCED;
+    case 'device':
+      return AdType.INTERACTIVE;
+    case 'research':
+      return AdType.KNOWLEDGE_GRAPH;
+    case 'clinical':
+      return AdType.MICROSIMULATION;
+    default:
+      return AdType.STANDARD;
   }
-  
-  // Default logic based on medical category
-  const medicalCategory = treatmentCategory.medicalCategory.toLowerCase();
-  
-  // Default fallback
-  return AdType.TEXT;
 }
 
 /**
@@ -325,3 +328,16 @@ export function getAllImpressions(): AdContentImpression[] {
 // in environment variables or a secure credential store
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 // Don't include the actual key in the code - it should be set in the environment 
+
+function detectAdType(adContent: AdContent): AdType {
+  const creative = adContent.creative as any;
+  
+  if (creative?.imageUrl && !creative?.bodyText) {
+    return AdType.ENHANCED;
+  } else if (creative?.videoUrl) {
+    return AdType.VIDEO;
+  } else {
+    // Default to standard text ad
+    return AdType.STANDARD;
+  }
+} 
