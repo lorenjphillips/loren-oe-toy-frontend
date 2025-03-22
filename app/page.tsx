@@ -42,6 +42,14 @@ const FixedAppBar = styled(AppBar)({
   zIndex: 1100,
 });
 
+const ReviewButton = styled(Button)({
+  margin: '0 1rem',
+  backgroundColor: '#2e7d32',
+  '&:hover': {
+    backgroundColor: '#1b5e20',
+  },
+});
+
 const AdminPanel = styled(Paper)({
   padding: '1rem',
   marginBottom: '1rem',
@@ -72,6 +80,7 @@ export default function Home() {
   });
   const [questionId, setQuestionId] = useState<string>('');
   const [showAdmin, setShowAdmin] = useState<boolean>(false);
+  const [showReviewerInfo, setShowReviewerInfo] = useState<boolean>(false);
   
   // Add new state for streaming and timing
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
@@ -289,8 +298,16 @@ export default function Home() {
         <Container maxWidth="md">
           <Toolbar disableGutters>
             <Typography variant="h6" style={{ flexGrow: 1, fontFamily: 'Roboto, sans-serif' }}>
-              Simple Ask
+              OpenEvidence Medical AI
             </Typography>
+            <ReviewButton 
+              variant="contained" 
+              color="success"
+              component={Link}
+              href="/review"
+            >
+              Reviewer Portal
+            </ReviewButton>
             <Link href="/knowledge-graph" passHref style={{ textDecoration: 'none', color: 'inherit', marginRight: '10px' }}>
               <Button color="inherit">Knowledge Graph</Button>
             </Link>
