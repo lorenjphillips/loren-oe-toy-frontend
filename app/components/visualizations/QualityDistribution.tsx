@@ -194,12 +194,18 @@ const QualityDistribution: React.FC<QualityDistributionProps> = ({
       // Histogram implementation
       data.forEach((metric, i) => {
         const color = metric.color || theme.visualizations.primary[i % theme.visualizations.primary.length];
+        
+        // Define thresholds for the histogram
+        const thresholds = Array.from({ length: bins }, (_, i) => 
+          domainMin + (i * (domainMax - domainMin)) / bins
+        );
+        
         const histogramGenerator = d3.histogram<number, number>()
           .domain([domainMin, domainMax])
-          .thresholds(bins);
+          .thresholds(thresholds);
           
-        const bins = histogramGenerator(metric.values);
-        const maxBinCount = d3.max(bins, d => d.length) || 0;
+        const histogramBins = histogramGenerator(metric.values);
+        const maxBinCount = d3.max(histogramBins, (d) => d.length) || 0;
         
         // Calculate scaled bin width
         const binWidth = xScale.bandwidth() * 0.8;
@@ -212,7 +218,7 @@ const QualityDistribution: React.FC<QualityDistributionProps> = ({
           
         const opacity = selectedCategory === null || selectedCategory === metric.id ? 1 : 0.4;
         
-        bins.forEach((bin, j) => {
+        histogramBins.forEach((bin, j) => {
           const barHeight = (bin.length / maxBinCount) * innerHeight * 0.8;
           const barY = yScale(bin.x0!);
           
@@ -337,9 +343,9 @@ const QualityDistribution: React.FC<QualityDistributionProps> = ({
           .attr('transform', `translate(${violinX}, 0)`);
           
         violinGroup.append('path')
-          .datum(density)
+          .datum(density as Array<[number, number]>)
           .attr('class', 'violin-path')
-          .attr('d', areaGenerator)
+          .attr('d', d => areaGenerator(d))
           .attr('fill', color)
           .attr('opacity', opacity)
           .attr('stroke', theme.colors.background)

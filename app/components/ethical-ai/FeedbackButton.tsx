@@ -7,6 +7,12 @@ interface FeedbackButtonProps {
   userId?: string;
 }
 
+interface FeedbackResult {
+  success: boolean;
+  feedbackId: string;
+  message: string;
+}
+
 /**
  * Feedback Button component
  * 
@@ -29,6 +35,7 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({
   const [feedbackText, setFeedbackText] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const handleSubmit = () => {
     if (!selectedOption) {
@@ -36,19 +43,25 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({
       return;
     }
     
-    processFeedback(
-      adContentId,
-      selectedOption,
-      feedbackText || undefined,
-      userId
+    setIsSubmitting(true);
+    
+    Promise.resolve(
+      processFeedback(
+        adContentId,
+        selectedOption,
+        feedbackText || undefined,
+        userId
+      )
     )
-      .then(result => {
+      .then((result: FeedbackResult) => {
         setSubmitted(true);
         setMessage(result.message);
+        setIsSubmitting(false);
       })
-      .catch(error => {
+      .catch((error: Error) => {
         setMessage('Error submitting feedback. Please try again.');
         console.error('Feedback submission error:', error);
+        setIsSubmitting(false);
       });
   };
   

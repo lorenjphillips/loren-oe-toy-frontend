@@ -104,6 +104,26 @@ export interface FlowData {
   links: FlowLink[];
 }
 
+// Define types for d3 flow data
+interface FlowLinkDatum {
+  source: number | { index?: number };
+  target: number | { index?: number };
+  width?: number;
+  index?: number;
+}
+
+interface FlowNodeDatum {
+  index?: number;
+  id: string;
+}
+
+// Update the ColorTheme interface to include categorical property
+interface ColorTheme {
+  visualizations?: {
+    categorical?: string[];
+  };
+}
+
 // InteractionFlowProps interface for component props
 export interface InteractionFlowProps {
   data: FlowData;
@@ -402,21 +422,22 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
         // Restore link appearance
         d3.select(event.currentTarget)
           .attr('stroke-opacity', selectedLink ? 0.2 : 0.4)
-          .attr('stroke-width', d => {
-            const sourceIdx = typeof d.source === 'number' ? d.source : d.source.index || 0;
-            const targetIdx = typeof d.target === 'number' ? d.target : d.target.index || 0;
+          .attr('stroke-width', function(this: SVGPathElement, d: any) {
+            const typedD = d as FlowLinkDatum;
+            const sourceIdx = typeof typedD.source === 'number' ? typedD.source : typedD.source.index || 0;
+            const targetIdx = typeof typedD.target === 'number' ? typedD.target : typedD.target.index || 0;
             
             return selectedLink && 
                   (processedNodes[sourceIdx].id === selectedLink.source) && 
                   (processedNodes[targetIdx].id === selectedLink.target) 
-                  ? (d.width || 1) * 1.5 : (d.width || 1);
+                  ? (typedD.width || 1) * 1.5 : (typedD.width || 1);
           });
           
         if (showValues) {
           hideTooltip(tooltip);
         }
       })
-      .on('click', (event, d) => {
+      .on('click', (event, d: FlowLinkDatum) => {
         const linkIndex = d.index || 0;
         const originalLink = processedLinks[linkIndex];
         const sourceIdx = typeof d.source === 'number' ? d.source : d.source.index || 0;
@@ -482,9 +503,9 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
           return originalNode.color;
         }
         
-        // Get default colors from theme or use fallback colors
-        const defaultColors = theme.visualizations?.categorical || 
-          ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2'];
+        // Default colors from theme or fallback
+        const defaultColors = theme.visualizations?.categorical ||
+          ['#3366CC', '#DC3912', '#FF9900', '#109618', '#990099', '#0099C6', '#DD4477', '#66AA00'];
         
         // Determine color based on group if available, or use index
         if (originalNode.group) {
@@ -510,8 +531,8 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
         const originalNode = processedNodes[d.index || 0];
         return selectedNode === null || selectedNode === originalNode.id ? 1 : 0.3;
       })
-      .on('mouseover', (event, d) => {
-        const nodeIndex = d.index || 0;
+      .on('mouseover', (event, d: any) => {
+        const nodeIndex = (d as FlowNodeDatum).index || 0;
         const originalNode = processedNodes[nodeIndex];
         
         // Highlight the node
@@ -559,14 +580,14 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
           showTooltip(tooltip, tooltipContent, event);
         }
       })
-      .on('mouseout', (event, d) => {
+      .on('mouseout', (event, d: any) => {
         // Restore node appearance
         d3.select(event.currentTarget)
           .attr('stroke', theme.colors.border)
           .attr('stroke-width', 1);
           
         // Restore link appearance
-        const nodeIndex = d.index || 0;
+        const nodeIndex = (d as FlowNodeDatum).index || 0;
         sankeyLinks.forEach(link => {
           const sourceIdx = typeof link.source === 'number' ? link.source : link.source.index || 0;
           const targetIdx = typeof link.target === 'number' ? link.target : link.target.index || 0;
@@ -582,8 +603,8 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
           hideTooltip(tooltip);
         }
       })
-      .on('click', (event, d) => {
-        const nodeIndex = d.index || 0;
+      .on('click', (event, d: any) => {
+        const nodeIndex = (d as FlowNodeDatum).index || 0;
         const originalNode = processedNodes[nodeIndex];
         
         // Update selected node state
