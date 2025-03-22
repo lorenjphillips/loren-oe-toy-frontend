@@ -18,7 +18,8 @@ import {
   Skeleton,
   Stack,
   Tooltip,
-  Typography
+  Typography,
+  useTheme
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -39,125 +40,73 @@ export interface ExecutiveOverviewProps {
   companyId?: string;
 }
 
-// Strategic KPI Card component
-interface StrategicKpiCardProps {
-  kpi: StrategicKPI;
+interface KPI {
+  label: string;
+  value: number;
+  percentChange: number;
+  trend: 'up' | 'down' | 'stable';
+}
+
+interface KPICardProps {
+  kpi: KPI;
   loading?: boolean;
 }
 
-const StrategicKpiCard: React.FC<StrategicKpiCardProps> = ({ 
-  kpi, 
-  loading = false
-}) => {
-  // Format the value based on its format type
-  const formattedValue = () => {
-    if (loading) return <Skeleton width={60} height={40} />;
-    
-    switch (kpi.format) {
-      case 'percentage':
-        return `${kpi.value.toFixed(1)}%`;
-      case 'currency':
-        return `$${kpi.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-      case 'time':
-        // Format time in hours:minutes
-        const hours = Math.floor(kpi.value / 60);
-        const minutes = Math.floor(kpi.value % 60);
-        return `${hours}h ${minutes}m`;
-      default:
-        return kpi.value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+const StrategicKPICard: React.FC<KPICardProps> = ({ kpi, loading = false }) => {
+  const theme = useTheme();
+
+  const trendIcon = (trend: 'up' | 'down' | 'stable') => {
+    switch (trend) {
+      case 'up': return <TrendingUpIcon color="success" />;
+      case 'down': return <TrendingDownIcon color="error" />;
+      default: return <TrendingFlatIcon color="info" />;
     }
   };
-  
-  // Significance indicator
-  const significanceIcon = () => {
-    if (loading) return <Skeleton variant="circular" width={24} height={24} />;
-    
-    switch (kpi.significance) {
-      case 'critical':
-        return <PriorityHighIcon color="error" />;
-      case 'important':
-        return <WarningIcon color="warning" />;
-      case 'monitor':
-        return <CheckCircleIcon color="success" />;
-      default:
-        return null;
+
+  const getChipColor = (trend: 'up' | 'down' | 'stable'): 'success' | 'error' | 'default' => {
+    switch (trend) {
+      case 'up': return 'success';
+      case 'down': return 'error';
+      default: return 'default';
     }
   };
-  
-  // Trend indicator
-  const trendIcon = () => {
-    if (loading) return <Skeleton variant="circular" width={24} height={24} />;
-    
-    switch (kpi.trend) {
-      case 'up':
-        return <TrendingUpIcon color={kpi.percentChange > 0 ? "success" : "error"} />;
-      case 'down':
-        return <TrendingDownIcon color={kpi.percentChange < 0 ? "error" : "success"} />;
-      case 'stable':
-        return <TrendingFlatIcon color="info" />;
-      default:
-        return null;
-    }
+
+  const formatPercentChange = (value: number): string => {
+    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
   };
-  
+
+  if (loading) {
+    return (
+      <Card variant="outlined" sx={{ height: '100%' }}>
+        <CardContent>
+          <Skeleton variant="text" width="60%" />
+          <Skeleton variant="text" width="40%" height={60} />
+          <Skeleton variant="rectangular" width={80} height={24} />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>
       <CardContent>
-        <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-            {significanceIcon()}
-            <Box component="span" sx={{ ml: 0.5 }}>{kpi.name}</Box>
-          </Typography>
-        </Box>
-        
-        <Typography variant="h4" sx={{ mb: 1, fontWeight: 'medium' }}>
-          {formattedValue()}
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          {kpi.label}
         </Typography>
-        
+        <Typography variant="h4" component="div" gutterBottom>
+          {kpi.value.toLocaleString()}
+        </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Chip 
             size="small" 
-            icon={trendIcon()} 
-            label={`${kpi.percentChange > 0 ? '+' : ''}${kpi.percentChange.toFixed(1)}%`}
-            color={kpi.percentChange >= 0 ? 'success' : 'error'}
-            sx={{ height: 24 }}
+            icon={trendIcon(kpi.trend)} 
+            label={formatPercentChange(kpi.percentChange)}
+            color={getChipColor(kpi.trend)}
           />
           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
             vs previous period
           </Typography>
         </Box>
-        
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="caption" color="text.secondary">
-            Benchmark Comparison
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-            <Typography variant="body2">
-              {loading ? 
-                <Skeleton width={30} /> : 
-                `${kpi.benchmarkComparison > 0 ? '+' : ''}${kpi.benchmarkComparison.toFixed(1)}%`
-              }
-            </Typography>
-            <Box sx={{ ml: 1, flexGrow: 1 }}>
-              {loading ? (
-                <Skeleton variant="rectangular" height={8} />
-              ) : (
-                <LinearProgress 
-                  variant="determinate" 
-                  value={50 + (kpi.benchmarkComparison * 2)} 
-                  color={kpi.benchmarkComparison >= 0 ? "success" : "error"}
-                  sx={{ height: 8, borderRadius: 5 }}
-                />
-              )}
-            </Box>
-          </Box>
-        </Box>
-        
-        <Tooltip title={kpi.description} arrow>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, cursor: 'help' }}>
-            {kpi.description.substring(0, 60)}...
-          </Typography>
-        </Tooltip>
       </CardContent>
     </Card>
   );
@@ -244,14 +193,23 @@ export default function ExecutiveOverview({ companyId }: ExecutiveOverviewProps)
   const dashboardContext = useContext(DashboardContext) as DashboardContextType;
   const [loading, setLoading] = useState(true);
   const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const { dateRange, filters } = dashboardContext;
+        const effectiveCompanyId = companyId ?? dashboardContext.selectedCompany;
+        
+        if (!effectiveCompanyId) {
+          setError('No company selected');
+          return;
+        }
+
         const summary = await executiveInsightsService.generateExecutiveInsights(
-          companyId || dashboardContext.selectedCompany,
+          effectiveCompanyId,
           dateRange,
           filters
         );
@@ -259,6 +217,7 @@ export default function ExecutiveOverview({ companyId }: ExecutiveOverviewProps)
         setExecutiveSummary(summary);
       } catch (error) {
         console.error('Error fetching executive insights:', error);
+        setError('Failed to fetch executive insights');
       } finally {
         setLoading(false);
       }
@@ -272,6 +231,14 @@ export default function ExecutiveOverview({ companyId }: ExecutiveOverviewProps)
     insight => ['critical', 'high'].includes(insight.businessImpact)
   ) || [];
   
+  // Map the strategic KPIs to our KPI interface
+  const mappedKpis = executiveSummary?.strategicKPIs.map(kpi => ({
+    label: kpi.name || 'Unnamed KPI',
+    value: kpi.value,
+    percentChange: kpi.percentChange,
+    trend: kpi.trend
+  })) || [];
+
   return (
     <Box>
       <Paper elevation={0} sx={{ p: 3, mb: 4, border: '1px solid', borderColor: 'divider' }}>
@@ -294,37 +261,54 @@ export default function ExecutiveOverview({ companyId }: ExecutiveOverviewProps)
       </Paper>
       
       <Typography variant="h5" sx={{ mb: 3 }}>
-        Strategic Performance Indicators
+        Strategic Performance
       </Typography>
       
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {loading ? (
-          Array(6).fill(0).map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <StrategicKpiCard 
-                kpi={{
-                  id: `loading-${index}`,
-                  name: '',
-                  value: 0,
-                  format: 'number',
-                  trend: 'stable',
-                  percentChange: 0,
-                  benchmarkComparison: 0,
-                  significance: 'monitor',
-                  description: ''
-                }} 
-                loading={true} 
-              />
+      {error ? (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      ) : (
+        <Grid container spacing={3}>
+          {loading ? (
+            // Loading state
+            Array(6).fill(0).map((_, index) => (
+              <Grid item xs={12} sm={6} md={4} key={`loading-${index}`}>
+                <StrategicKPICard 
+                  kpi={{
+                    label: '',
+                    value: 0,
+                    percentChange: 0,
+                    trend: 'stable'
+                  }} 
+                  loading={true} 
+                />
+              </Grid>
+            ))
+          ) : executiveSummary ? (
+            // Mapped KPIs
+            executiveSummary.strategicKPIs.map((kpi, index) => (
+              <Grid item xs={12} sm={6} md={4} key={`kpi-${index}`}>
+                <StrategicKPICard 
+                  kpi={{
+                    label: kpi.name || 'Unnamed KPI',
+                    value: kpi.value,
+                    percentChange: kpi.percentChange,
+                    trend: kpi.trend
+                  }}
+                  loading={false}
+                />
+              </Grid>
+            ))
+          ) : (
+            <Grid item xs={12}>
+              <Typography color="text.secondary">
+                No data available
+              </Typography>
             </Grid>
-          ))
-        ) : (
-          executiveSummary?.strategicKPIs.map(kpi => (
-            <Grid item xs={12} sm={6} md={4} key={kpi.id}>
-              <StrategicKpiCard kpi={kpi} />
-            </Grid>
-          ))
-        )}
-      </Grid>
+          )}
+        </Grid>
+      )}
       
       <Typography variant="h5" sx={{ mb: 3 }}>
         Priority Insights

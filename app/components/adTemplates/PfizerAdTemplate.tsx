@@ -69,6 +69,33 @@ export interface PfizerAdTemplateProps extends Omit<BaseAdTemplateProps, 'adCont
   evidenceText?: string;
 }
 
+// Add after imports
+interface ExtendedTreatmentCategory {
+  id: string;
+  name: string;
+  medicalCategoryName?: string;
+}
+
+interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
+  treatmentCategory: ExtendedTreatmentCategory;
+  company: {
+    id: string;
+    name: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    defaultDisplaySettings?: Record<string, any>;
+    logoUrl?: string;
+    legalDisclaimer?: string;
+  };
+  creative?: {
+    headline?: string;
+    subheadline?: string;
+    bodyText?: string;
+    callToAction?: string;
+    displaySettings?: Record<string, any>;
+  };
+}
+
 /**
  * PfizerAdTemplate component
  * 
@@ -84,21 +111,24 @@ const PfizerAdTemplate: React.FC<PfizerAdTemplateProps> = ({
   const theme = useTheme();
   const { treatmentCategory } = adContent;
   
+  // Cast to our extended type
+  const extendedAdContent = adContent as unknown as ExtendedAdContent;
+  const { company, creative } = extendedAdContent;
+  
   // Apply Pfizer-specific display customizations
-  const customizedAdContent: AdContent = {
+  const customizedAdContent = {
     ...adContent,
     company: {
-      ...adContent.company,
+      ...company,
       primaryColor: PFIZER_COLORS.primary,
       secondaryColor: PFIZER_COLORS.secondary,
       defaultDisplaySettings: {
-        ...adContent.company.defaultDisplaySettings,
+        ...company.defaultDisplaySettings,
         backgroundColor: '#ffffff',
         textColor: PFIZER_COLORS.textDark,
         cornerRadius: 4,
         border: true,
-        borderColor: '#e8e8e8',
-        logoPosition: 'top',
+        borderColor: '#dddddd',
       }
     }
   };

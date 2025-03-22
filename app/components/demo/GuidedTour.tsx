@@ -111,7 +111,7 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
   const tourSteps = getTourSteps();
   
   useEffect(() => {
-    // Only show guided tour if it's enabled in the demo config
+    // Only show guided tour if it&apos;s enabled in the demo config
     if (config.enabled && config.guidedTourEnabled && autoStart) {
       // Small delay to ensure DOM is ready
       const timer = setTimeout(() => {

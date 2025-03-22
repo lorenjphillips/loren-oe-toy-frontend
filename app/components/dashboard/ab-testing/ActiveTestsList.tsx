@@ -58,11 +58,13 @@ export const ActiveTestsList: React.FC<ActiveTestsListProps> = ({ onViewResults 
   const handleStatusChange = async (testId: string, newStatus: TestStatus) => {
     try {
       // In a real app, this would call an API
-      await TestManager.updateTestStatus(testId, newStatus);
+      await TestManager.updateTest(testId, { status: newStatus });
       
       // Update local state
       setTests(prev => prev.map(test => 
-        test.id === testId ? { ...test, status: newStatus } : test
+        test.id === testId 
+          ? { ...test, status: newStatus } 
+          : test
       ));
     } catch (error) {
       console.error('Error updating test status:', error);

@@ -91,10 +91,23 @@ const EvidencePanel = styled(Box)(({ theme }) => ({
   borderRadius: '0 4px 4px 0',
 }));
 
+interface ExtendedTreatmentCategory {
+  id: string;
+  name: string;
+  medicalCategoryName?: string;
+}
+
+interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
+  treatmentCategory: ExtendedTreatmentCategory;
+}
+
 export interface GSKAdTemplateProps extends Omit<BaseAdTemplateProps, 'adContent'> {
   adContent: AdContent;
   showEvidencePanel?: boolean;
   evidencePoints?: string[];
+  showBadge?: boolean;
+  activeIndicator?: string;
+  studyStats?: string;
 }
 
 /**
@@ -108,10 +121,15 @@ const GSKAdTemplate: React.FC<GSKAdTemplateProps> = ({
   adContent,
   showEvidencePanel = true,
   evidencePoints,
+  showBadge = true,
+  activeIndicator,
+  studyStats,
   ...baseProps
 }) => {
   const theme = useTheme();
-  const { treatmentCategory } = adContent;
+  // Cast to extended type
+  const extendedAdContent = adContent as unknown as ExtendedAdContent;
+  const { company, creative, treatmentCategory } = extendedAdContent;
   
   // Apply GSK-specific display customizations
   const customizedAdContent: AdContent = {
@@ -170,7 +188,7 @@ const GSKAdTemplate: React.FC<GSKAdTemplateProps> = ({
         {/* Category-specific header */}
         <GSKHeader categoryId={treatmentCategory.id}>
           <Typography variant="subtitle2">
-            {treatmentCategory.medicalCategoryName} | {treatmentCategory.name}
+            {treatmentCategory.medicalCategoryName || 'Medical Category'} | {treatmentCategory.name}
           </Typography>
         </GSKHeader>
         

@@ -45,10 +45,10 @@ const sampleGapData = [
 // Sample topic area data
 const sampleTopicAreas = [
   { area: "Cardiology", gapCount: 86, topGap: GapType.CONFLICTING, example: "Latest guidelines for anticoagulation in AFib with CKD seem to conflict with previous recommendations." },
-  { area: "Oncology", gapCount: 78, topGap: GapType.EVIDENCE_BASED, example: "What's the evidence for this new targeted therapy in relapsed breast cancer?" },
+  { area: "Oncology", gapCount: 78, topGap: GapType.EVIDENCE_BASED, example: "What&apos;s the evidence for this new targeted therapy in relapsed breast cancer?" },
   { area: "Endocrinology", gapCount: 65, topGap: GapType.TEMPORAL, example: "Has there been any update to the diabetes management algorithm this year?" },
   { area: "Infectious Disease", gapCount: 59, topGap: GapType.CONCEPTUAL, example: "How exactly does this new antiviral work on a molecular level?" },
-  { area: "Neurology", gapCount: 52, topGap: GapType.RARE_CASE, example: "What's the approach for this unusual presentation of a movement disorder?" },
+  { area: "Neurology", gapCount: 52, topGap: GapType.RARE_CASE, example: "What&apos;s the approach for this unusual presentation of a movement disorder?" },
 ];
 
 // Sample critical gaps that need addressing

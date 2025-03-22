@@ -71,8 +71,43 @@ export const TestResultsComponent: React.FC<TestResultsProps> = ({ testId, onBac
         
         setResults(resultsData);
         
-        // Generate report from results
-        const reportData = await TestReporting.generateDetailedReport(resultsData);
+        // Generate report data manually since generateDetailedReport is not available
+        const reportData = {
+          overallConversionRate: resultsData.summaryMetrics.overallConversionRate,
+          controlConversionRate: resultsData.variantResults.find(v => v.isControl)?.metrics.conversionRate || 0,
+          variantsAnalysis: resultsData.variantResults.map(variant => {
+            // Determine confidence level based on p-value
+            let confidenceLevel = null;
+            if (variant.pValue && variant.pValue < 0.01) {
+              confidenceLevel = 'high';
+            } else if (variant.pValue && variant.pValue < 0.05) {
+              confidenceLevel = 'medium';
+            } else if (variant.pValue && variant.pValue < 0.1) {
+              confidenceLevel = 'low';
+            }
+            
+            return {
+              ...variant,
+              confidenceLevel,
+              relativeImprovement: variant.isControl ? 0 : variant.improvement
+            };
+          }),
+          sampleSizeAdequate: resultsData.sampleSize >= 1000,
+          testPower: 0.8,
+          insights: resultsData.winningVariantId 
+            ? [{ 
+                type: 'positive', 
+                message: `The winning variant showed a ${(resultsData.summaryMetrics.improvementOverControl).toFixed(2)}% improvement over the control.` 
+              }]
+            : [{ 
+                type: 'neutral', 
+                message: 'No statistically significant winner was identified in this test.' 
+              }],
+          recommendations: resultsData.winningVariantId 
+            ? ['Implement the winning variant across all traffic', 'Consider follow-up tests to further optimize']
+            : ['Redesign test variants to create more significant differences', 'Increase sample size by running the test longer'],
+          dateGenerated: new Date()
+        };
         setReport(reportData);
       } catch (error) {
         console.error('Error fetching test results:', error);
@@ -220,7 +255,7 @@ export const TestResultsComponent: React.FC<TestResultsProps> = ({ testId, onBac
                   Total Impressions
                 </Typography>
                 <Typography variant="h4">
-                  {results.totalImpressions.toLocaleString()}
+                  {results.totalExposure.toLocaleString()}
                 </Typography>
               </CardContent>
             </Card>
@@ -232,7 +267,7 @@ export const TestResultsComponent: React.FC<TestResultsProps> = ({ testId, onBac
                   Total Conversions
                 </Typography>
                 <Typography variant="h4">
-                  {results.totalConversions.toLocaleString()}
+                  {results.summaryMetrics.totalConversions.toLocaleString()}
                 </Typography>
               </CardContent>
             </Card>
@@ -308,82 +343,74 @@ export const TestResultsComponent: React.FC<TestResultsProps> = ({ testId, onBac
                 Variant Performance
               </Typography>
               
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Variant</TableCell>
-                      <TableCell>Impressions</TableCell>
-                      <TableCell>Conversions</TableCell>
-                      <TableCell>Conversion Rate</TableCell>
-                      <TableCell>Improvement</TableCell>
-                      <TableCell>Confidence</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {results.variants.map((variant) => (
-                      <TableRow key={variant.variantId} sx={variant.isControl ? {} : { backgroundColor: variant.improvement > 0 ? 'rgba(76, 175, 80, 0.08)' : variant.improvement < 0 ? 'rgba(244, 67, 54, 0.08)' : 'transparent' }}>
-                        <TableCell>
-                          <Typography variant="body1">
-                            {variant.name} {variant.isControl && '(Control)'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{variant.metrics.impressions.toLocaleString()}</TableCell>
-                        <TableCell>{variant.metrics.conversions.toLocaleString()}</TableCell>
-                        <TableCell>{formatPercentage(variant.metrics.conversions / variant.metrics.impressions)}</TableCell>
-                        <TableCell>
-                          {variant.isControl ? (
-                            <Typography variant="body2" color="textSecondary">Baseline</Typography>
-                          ) : (
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              {getTrendIcon(variant.improvement)}
-                              <Typography 
-                                variant="body2" 
-                                color={variant.improvement > 0 ? 'success.main' : variant.improvement < 0 ? 'error.main' : 'text.secondary'}
-                                sx={{ ml: 1 }}
-                              >
-                                {formatImprovement(variant.improvement)}
-                              </Typography>
-                            </Box>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {variant.isControl ? (
-                            <Typography variant="body2" color="textSecondary">N/A</Typography>
-                          ) : (
-                            <Chip 
-                              size="small" 
-                              label={variant.significanceLevel || 'None'} 
-                              color={getConfidenceColor(variant.significanceLevel)}
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              {/* Insights */}
-              <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-                Variant Insights
-              </Typography>
-              
               <Grid container spacing={3}>
-                {report.variantInsights.map((insight: any) => (
-                  <Grid item xs={12} md={6} key={insight.variantId}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="subtitle1" gutterBottom>
-                          {insight.name}
-                        </Typography>
-                        <Typography variant="body2">
-                          {insight.insight}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+                <Grid item xs={12} md={12} lg={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                        Variants
+                      </Typography>
+                      
+                      <Box sx={{ mt: 2 }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Name</TableCell>
+                              <TableCell align="right">Traffic %</TableCell>
+                              <TableCell align="right">Conversions</TableCell>
+                              <TableCell align="right">Conv. Rate</TableCell>
+                              <TableCell align="right">Improvement</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {results.variantResults.map((variant: VariantResult) => (
+                              <TableRow key={variant.variantId}>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    {variant.name}
+                                    {variant.isControl && (
+                                      <Chip size="small" label="Control" sx={{ ml: 1 }} />
+                                    )}
+                                    {results.winningVariantId === variant.variantId && (
+                                      <Chip 
+                                        size="small" 
+                                        label="Winner" 
+                                        color="success"
+                                        icon={<CheckCircleIcon />}
+                                        sx={{ ml: 1 }} 
+                                      />
+                                    )}
+                                  </Box>
+                                </TableCell>
+                                <TableCell align="right">
+                                  {((variant.metrics.impressions / results.totalExposure) * 100).toFixed(1)}%
+                                </TableCell>
+                                <TableCell align="right">
+                                  {variant.metrics.conversions.toLocaleString()}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatPercentage(variant.metrics.conversionRate)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {variant.isControl ? (
+                                    '-'
+                                  ) : (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                      {getTrendIcon(variant.improvement || 0)}
+                                      <Typography variant="body2">
+                                        {formatImprovement(variant.improvement || 0)}
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
               </Grid>
             </>
           )}

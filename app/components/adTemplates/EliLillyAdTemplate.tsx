@@ -118,6 +118,32 @@ const DataMetric = ({
   );
 };
 
+interface ExtendedTreatmentCategory {
+  id: string;
+  name: string;
+  medicalCategoryName?: string;
+}
+
+interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
+  treatmentCategory: ExtendedTreatmentCategory;
+  company: {
+    id: string;
+    name: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    defaultDisplaySettings?: Record<string, any>;
+    logoUrl?: string;
+    legalDisclaimer?: string;
+  };
+  creative?: {
+    headline?: string;
+    subheadline?: string;
+    bodyText?: string;
+    callToAction?: string;
+    displaySettings?: Record<string, any>;
+  };
+}
+
 export interface EliLillyAdTemplateProps extends Omit<BaseAdTemplateProps, 'adContent'> {
   adContent: AdContent;
   showDataMetrics?: boolean;
@@ -143,23 +169,24 @@ const EliLillyAdTemplate: React.FC<EliLillyAdTemplateProps> = ({
   ...baseProps
 }) => {
   const theme = useTheme();
-  const { treatmentCategory } = adContent;
+  // Cast to extended type
+  const extendedAdContent = adContent as unknown as ExtendedAdContent;
+  const { company, creative, treatmentCategory } = extendedAdContent;
   
-  // Apply Lilly-specific display customizations
-  const customizedAdContent: AdContent = {
+  // Apply Eli Lilly specific display customizations
+  const customizedAdContent = {
     ...adContent,
     company: {
-      ...adContent.company,
+      ...company,
       primaryColor: LILLY_COLORS.primary,
       secondaryColor: LILLY_COLORS.secondary,
       defaultDisplaySettings: {
-        ...adContent.company.defaultDisplaySettings,
+        ...company.defaultDisplaySettings,
         backgroundColor: '#ffffff',
         textColor: LILLY_COLORS.textDark,
-        cornerRadius: 4,
+        cornerRadius: 8,
         border: true,
-        borderColor: '#e6e6e6',
-        logoPosition: 'left',
+        borderColor: '#ecf0f1',
       }
     }
   };

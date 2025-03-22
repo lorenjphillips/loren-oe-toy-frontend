@@ -327,7 +327,7 @@ const positiveOutcomeNode: OutcomeNode = {
   type: 'outcome',
   outcomeType: 'positive',
   title: 'Optimal Treatment Outcome',
-  content: 'The patient's neutropenia resolves after temporary interruption. She resumes palbociclib at 100 mg daily with continued letrozole. At 6-month follow-up, imaging shows stable disease with no new metastases and improved bone pain.',
+  content: 'The patient&apos;s neutropenia resolves after temporary interruption. She resumes palbociclib at 100 mg daily with continued letrozole. At 6-month follow-up, imaging shows stable disease with no new metastases and improved bone pain.',
   patientStatus: 'improved',
   explanation: 'By appropriately managing the neutropenia through dose modification rather than discontinuation, the patient could continue to benefit from CDK4/6 inhibitor therapy. Clinical trials have shown that dose reductions for toxicity management do not significantly impact efficacy outcomes. The combination of CDK4/6 inhibitor plus endocrine therapy provides superior progression-free survival compared to endocrine therapy alone in HR+/HER2- metastatic breast cancer.',
   followUp: 'Continue current regimen with regular monitoring of CBC every 2 weeks for 2 cycles, then monthly. Perform imaging assessments every 3-4 months or as clinically indicated. Consider bone-targeted therapy (e.g., zoledronic acid or denosumab) if not already initiated.'
@@ -336,7 +336,8 @@ const positiveOutcomeNode: OutcomeNode = {
 // Suboptimal outcome node
 const suboptimalOutcomeNode: OutcomeNode = {
   id: NODE_IDS.OUTCOME_SUBOPTIMAL,
-  type: 'neutral',
+  type: 'outcome',
+  outcomeType: 'neutral',
   title: 'Suboptimal Treatment Outcome',
   content: 'The patient initially responds to treatment but experiences disease progression after 8 months of therapy, with new liver metastases identified on follow-up imaging.',
   patientStatus: 'worsened',
@@ -347,7 +348,8 @@ const suboptimalOutcomeNode: OutcomeNode = {
 // Negative outcome node
 const negativeOutcomeNode: OutcomeNode = {
   id: NODE_IDS.OUTCOME_NEGATIVE,
-  type: 'negative',
+  type: 'outcome',
+  outcomeType: 'negative',
   title: 'Negative Treatment Outcome',
   content: 'The patient develops febrile neutropenia requiring hospitalization. Treatment must be discontinued due to recurrent severe toxicity, limiting future treatment options.',
   patientStatus: 'complicated',

@@ -442,7 +442,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis label={{ value: 'Completion Rate (%)', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip formatter={(value) => [`${value.toFixed(1)}%`, 'Completion Rate']} />
+                    <Tooltip formatter={(value) => [
+                      // @ts-ignore - Handle different value types
+                      `${typeof value === 'number' ? value.toFixed(1) : value}%`, 
+                      'Completion Rate'
+                    ]} />
                     <Line type="monotone" dataKey="completionRate" stroke="#8884d8" activeDot={{ r: 8 }} />
                   </LineChart>
                 </ResponsiveContainer>

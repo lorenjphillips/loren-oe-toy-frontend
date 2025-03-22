@@ -846,7 +846,7 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
       if (nextLayer.length > 0) {
         layers.push(nextLayer);
       } else {
-        // If we can't add any more nodes, break to avoid infinite loop
+        // If we can&apos;t add any more nodes, break to avoid infinite loop
         break;
       }
     }

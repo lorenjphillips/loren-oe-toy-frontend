@@ -117,7 +117,7 @@ const firstDecisionNode: DecisionNode = {
   type: 'decision',
   title: 'Treatment Intensification for Uncontrolled Type 2 Diabetes',
   content: 'The patient reports adequate medication adherence but admits to inconsistent dietary habits. She has experienced one episode of mild hypoglycemia in the past month. She is concerned about her worsening glycemic control and expresses willingness to improve her diabetes management.',
-  question: 'What would be the most appropriate next step in managing this patient's diabetes?',
+  question: 'What would be the most appropriate next step in managing this patient&apos;s diabetes?',
   options: [
     {
       id: 'increase_sulfonylurea',
@@ -226,8 +226,8 @@ const secondDecisionNode: DecisionNode = {
   id: NODE_IDS.DECISION_2,
   type: 'decision',
   title: 'Management of Sulfonylurea Therapy After GLP-1 RA Initiation',
-  content: 'You decide to add dulaglutide 0.75mg subcutaneously once weekly to the patient's regimen. The patient asks about continuing her glimepiride while starting the new medication.',
-  question: 'What is the most appropriate approach to the patient's sulfonylurea therapy when initiating dulaglutide?',
+  content: 'You decide to add dulaglutide 0.75mg subcutaneously once weekly to the patient&apos;s regimen. The patient asks about continuing her glimepiride while starting the new medication.',
+  question: 'What is the most appropriate approach to the patient&apos;s sulfonylurea therapy when initiating dulaglutide?',
   options: [
     {
       id: 'continue_same_dose',
@@ -251,7 +251,7 @@ const secondDecisionNode: DecisionNode = {
       id: 'delay_glp1',
       text: 'Delay initiation of dulaglutide until glimepiride can be gradually tapered',
       isCorrect: false,
-      explanation: 'Delaying the initiation of more effective therapy unnecessarily prolongs the patient's exposure to poor glycemic control. A concurrent reduction in sulfonylurea dose is generally preferred over sequential therapy changes for treatment intensification in this scenario.'
+      explanation: 'Delaying the initiation of more effective therapy unnecessarily prolongs the patient&apos;s exposure to poor glycemic control. A concurrent reduction in sulfonylurea dose is generally preferred over sequential therapy changes for treatment intensification in this scenario.'
     }
   ],
   metadata: {
@@ -344,7 +344,7 @@ const suboptimalOutcomeNode: OutcomeNode = {
   type: 'outcome',
   outcomeType: 'neutral',
   title: 'Suboptimal Treatment Outcome',
-  content: 'At 3-month follow-up, the patient's HbA1c has improved modestly to 7.9%, but remains above target. She has experienced mild gastrointestinal side effects from therapy and has lost only 1 kg of weight.',
+  content: 'At 3-month follow-up, the patient&apos;s HbA1c has improved modestly to 7.9%, but remains above target. She has experienced mild gastrointestinal side effects from therapy and has lost only 1 kg of weight.',
   patientStatus: 'unchanged',
   explanation: 'The chosen treatment approach provided some benefit but failed to achieve optimal glycemic control. Suboptimal responses to GLP-1 receptor agonist therapy may result from inadequate dosing, poor adherence due to side effects, or the need for additional antihyperglycemic agents. The moderate improvement in HbA1c suggests some efficacy but indicates the need for treatment adjustment.',
   followUp: 'Consider uptitration of dulaglutide to 1.5mg weekly if tolerated. Evaluate adherence to medication and lifestyle modifications. Add an SGLT-2 inhibitor if no contraindications exist. Provide strategies for managing GI side effects. If glycemic control remains inadequate after these adjustments, consider transitioning to basal insulin therapy.'

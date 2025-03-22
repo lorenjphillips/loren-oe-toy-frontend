@@ -41,8 +41,8 @@ const sampleDecisionPointData = [
 
 // Sample contextual patterns data
 const samplePatterns = [
-  { pattern: "New diagnosis considerations", percentage: 28, example: "What's the first-line treatment for newly diagnosed type 2 diabetes with normal kidney function?" },
-  { pattern: "Treatment failure scenarios", percentage: 22, example: "What options exist when metformin and an SGLT-2 inhibitor aren't providing adequate glycemic control?" },
+  { pattern: "New diagnosis considerations", percentage: 28, example: "What&apos;s the first-line treatment for newly diagnosed type 2 diabetes with normal kidney function?" },
+  { pattern: "Treatment failure scenarios", percentage: 22, example: "What options exist when metformin and an SGLT-2 inhibitor aren&apos;t providing adequate glycemic control?" },
   { pattern: "Special population considerations", percentage: 18, example: "How should I adjust dosing for elderly patients with reduced kidney function?" },
   { pattern: "Comparative effectiveness questions", percentage: 16, example: "Is drug A superior to drug B for patients with comorbid heart failure?" },
   { pattern: "Safety concerns with specific agents", percentage: 12, example: "What monitoring is required for patients on this medication with a history of liver disease?" },

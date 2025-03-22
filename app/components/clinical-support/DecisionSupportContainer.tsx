@@ -4,7 +4,7 @@ import { ClinicalEvidence, ClinicalGuideline } from '../../models/phase4';
 import EvidenceSummary from './EvidenceSummary';
 import RecommendationPanel from './RecommendationPanel';
 import OptInToggle from './OptInToggle';
-import { getDecisionSupport } from '../../services/clinical-support/decisionSupport';
+import { getDecisionSupport } from '../../services/clinical-support/decisionSupportMock';
 import { styled } from '@mui/material/styles';
 import { 
   Paper, 

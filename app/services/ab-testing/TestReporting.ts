@@ -221,4 +221,90 @@ export class TestReporting {
       return [];
     }
   }
+  
+  /**
+   * Generate detailed report from test results
+   */
+  static async generateDetailedReport(results: TestResults): Promise<any> {
+    try {
+      // In a real application, this would generate a comprehensive report
+      // with statistical analysis, graphs data, etc.
+      
+      // Calculate overall conversion rate
+      const overallConversionRate = results.summaryMetrics.totalConversions / results.totalExposure;
+      
+      // Find control variant
+      const controlVariant = results.variantResults.find(variant => variant.isControl);
+      
+      // Calculate confidence intervals for all variants
+      const variantsWithConfidence = results.variantResults.map(variant => {
+        // Determine confidence level based on p-value
+        let confidenceLevel = null;
+        if (variant.statisticalSignificance.pValue < 0.01) {
+          confidenceLevel = 'high';
+        } else if (variant.statisticalSignificance.pValue < 0.05) {
+          confidenceLevel = 'medium';
+        } else if (variant.statisticalSignificance.pValue < 0.1) {
+          confidenceLevel = 'low';
+        }
+        
+        return {
+          ...variant,
+          confidenceLevel,
+          // Additional metrics that might be useful in a report
+          relativeImprovement: variant.isControl ? 0 : variant.metrics.improvementOverControl
+        };
+      });
+      
+      // Generate additional insights
+      const insights = [];
+      
+      if (results.winningVariantId) {
+        const winner = results.variantResults.find(v => v.variantId === results.winningVariantId);
+        if (winner) {
+          insights.push({
+            type: 'positive',
+            message: `The winning variant "${winner.variantName}" showed a ${(winner.metrics.improvementOverControl || 0).toFixed(2)}% improvement over the control.`
+          });
+        }
+      } else {
+        insights.push({
+          type: 'neutral',
+          message: 'No statistically significant winner was identified in this test.'
+        });
+      }
+      
+      // Sample size adequacy check
+      if (results.sampleSize < 1000) {
+        insights.push({
+          type: 'warning',
+          message: 'The sample size may be too small for reliable results. Consider running the test longer.'
+        });
+      }
+      
+      // Generate recommendations based on results
+      const recommendations = [];
+      if (results.winningVariantId) {
+        recommendations.push('Implement the winning variant across all traffic');
+        recommendations.push('Consider follow-up tests to further optimize the winning variant');
+      } else {
+        recommendations.push('Redesign test variants to create more significant differences');
+        recommendations.push('Increase sample size by running the test longer or with more traffic');
+      }
+      
+      return {
+        overallConversionRate,
+        controlConversionRate: controlVariant?.metrics.conversionRate || 0,
+        variantsAnalysis: variantsWithConfidence,
+        sampleSizeAdequate: results.sampleSize >= 1000,
+        testPower: 0.8, // Typically desired statistical power
+        insights,
+        recommendations,
+        dateGenerated: new Date()
+      };
+    } catch (error) {
+      console.error('Error generating detailed report:', error);
+      throw error;
+    }
+  }
 } 

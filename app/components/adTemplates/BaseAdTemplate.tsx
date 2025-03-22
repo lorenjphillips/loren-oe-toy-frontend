@@ -12,6 +12,30 @@ import { styled } from '@mui/system';
 import { AdContent, AdDisplaySettings } from '../../models/adTypes';
 import { fadeIn, fadeInUp } from '../../styles/transitions';
 
+// Extended interfaces for our component
+interface ExtendedCompany {
+  id: string;
+  name: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  defaultDisplaySettings?: Record<string, any>;
+  logoUrl?: string;
+  legalDisclaimer?: string;
+}
+
+interface ExtendedCreative {
+  headline?: string;
+  subheadline?: string;
+  bodyText?: string;
+  callToAction?: string;
+  displaySettings?: Record<string, any>;
+}
+
+interface ExtendedAdContent extends Omit<AdContent, 'company' | 'creative'> {
+  company: ExtendedCompany;
+  creative?: ExtendedCreative;
+}
+
 // Styled components for the base template
 const AdContainer = styled(Paper, {
   shouldForwardProp: (prop) => prop !== 'customSettings'
@@ -31,7 +55,9 @@ const AdContainer = styled(Paper, {
   transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   '&:hover': {
     transform: 'translateY(-2px)',
-    boxShadow: theme.shadows[3]
+    boxShadow: Array.isArray(theme.shadows) && theme.shadows.length > 3 
+      ? theme.shadows[3] 
+      : '0 4px 8px rgba(0,0,0,0.1)'
   }
 }));
 
@@ -48,42 +74,7 @@ const SponsoredBadge = styled(Box)(({ theme }) => ({
   animation: `${fadeIn} 0.8s ease-in forwards`,
 }));
 
-const LogoContainer = styled(Box)<{ position?: 'top' | 'bottom' | 'left' | 'right' }>(
-  ({ theme, position = 'top' }) => {
-    const positionStyles = {
-      top: {
-        width: '100%',
-        textAlign: 'left',
-        marginBottom: theme.spacing(1.5),
-      },
-      bottom: {
-        width: '100%',
-        textAlign: 'left',
-        marginTop: theme.spacing(1.5),
-      },
-      left: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        marginRight: theme.spacing(2),
-        maxWidth: '80px',
-      },
-      right: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        marginLeft: theme.spacing(2),
-        maxWidth: '80px',
-      },
-    };
-    
-    return {
-      ...positionStyles[position],
-      animation: `${fadeIn} 0.5s ease-in forwards`,
-    };
-  }
-);
-
+// Use regular Box component with sx prop instead of styled component to avoid type issues
 const ContentContainer = styled(Box)(({ theme }) => ({
   animation: `${fadeInUp} 0.7s ease-in-out forwards`,
 }));
@@ -120,12 +111,14 @@ const BaseAdTemplate: React.FC<BaseAdTemplateProps> = ({
   children,
 }) => {
   const theme = useTheme();
-  const { company, creative, treatmentCategory } = adContent;
+  // Cast to our extended type to handle additional properties
+  const extendedAdContent = adContent as unknown as ExtendedAdContent;
+  const { company, creative, treatmentCategory } = extendedAdContent;
   
   // Merge display settings with precedence: creative > company > default
   const displaySettings = {
-    ...company.defaultDisplaySettings,
-    ...creative.displaySettings,
+    ...company?.defaultDisplaySettings || {},
+    ...creative?.displaySettings || {},
   };
   
   // Handle call-to-action click
@@ -150,6 +143,50 @@ const BaseAdTemplate: React.FC<BaseAdTemplateProps> = ({
   const logoPosition = displaySettings.logoPosition || 'top';
   const isHorizontalLogo = logoPosition === 'left' || logoPosition === 'right';
   
+  // Define logo container style based on position
+  const getLogoContainerStyle = (position: string) => {
+    const baseStyle = {
+      animation: `${fadeIn} 0.5s ease-in forwards`,
+    };
+    
+    switch(position) {
+      case 'top':
+        return {
+          ...baseStyle,
+          width: '100%',
+          textAlign: 'left',
+          marginBottom: theme.spacing(1.5)
+        };
+      case 'bottom':
+        return {
+          ...baseStyle,
+          width: '100%',
+          textAlign: 'left',
+          marginTop: theme.spacing(1.5)
+        };
+      case 'left':
+        return {
+          ...baseStyle,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          marginRight: theme.spacing(2),
+          maxWidth: '80px'
+        };
+      case 'right':
+        return {
+          ...baseStyle,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          marginLeft: theme.spacing(2),
+          maxWidth: '80px'
+        };
+      default:
+        return baseStyle;
+    }
+  };
+  
   return (
     <AdContainer 
       customSettings={displaySettings}
@@ -168,28 +205,30 @@ const BaseAdTemplate: React.FC<BaseAdTemplateProps> = ({
       }}>
         {/* Logo placement (conditional based on position) */}
         {(logoPosition === 'top' || logoPosition === 'left') && (
-          <LogoContainer position={logoPosition}>
+          <Box sx={getLogoContainerStyle(logoPosition)}>
             <img 
-              src={company.logoUrl} 
-              alt={`${company.name} logo`} 
+              src={company.logoUrl || `https://via.placeholder.com/120x40?text=${encodeURIComponent(company.name || 'Company')}`} 
+              alt={`${company.name || 'Company'} logo`} 
               style={{ 
                 maxWidth: isHorizontalLogo ? '80px' : '120px',
                 maxHeight: '40px',
                 objectFit: 'contain'
               }} 
             />
-          </LogoContainer>
+          </Box>
         )}
         
         {/* Main content */}
         <ContentContainer sx={{ flex: 1 }}>
-          <AdCategory label={treatmentCategory.name} size="small" />
+          {treatmentCategory?.name && (
+            <AdCategory label={treatmentCategory.name} size="small" />
+          )}
           
           <Typography variant="h6" component="h3" gutterBottom>
-            {creative.headline}
+            {creative?.headline || 'Advertisement'}
           </Typography>
           
-          {creative.subheadline && (
+          {creative?.subheadline && (
             <Typography 
               variant="subtitle1" 
               gutterBottom 
@@ -207,7 +246,7 @@ const BaseAdTemplate: React.FC<BaseAdTemplateProps> = ({
             color="textSecondary" 
             sx={{ marginBottom: 2 }}
           >
-            {creative.bodyText}
+            {creative?.bodyText || ''}
           </Typography>
           
           <Button 
@@ -221,23 +260,23 @@ const BaseAdTemplate: React.FC<BaseAdTemplateProps> = ({
               }
             }}
           >
-            {creative.callToAction}
+            {creative?.callToAction || 'Learn More'}
           </Button>
         </ContentContainer>
         
         {/* Logo placement (conditional based on position) */}
         {(logoPosition === 'bottom' || logoPosition === 'right') && (
-          <LogoContainer position={logoPosition}>
+          <Box sx={getLogoContainerStyle(logoPosition)}>
             <img 
-              src={company.logoUrl} 
-              alt={`${company.name} logo`} 
+              src={company.logoUrl || `https://via.placeholder.com/120x40?text=${encodeURIComponent(company.name || 'Company')}`} 
+              alt={`${company.name || 'Company'} logo`} 
               style={{ 
                 maxWidth: isHorizontalLogo ? '80px' : '120px',
                 maxHeight: '40px',
                 objectFit: 'contain'
               }} 
             />
-          </LogoContainer>
+          </Box>
         )}
       </Box>
       

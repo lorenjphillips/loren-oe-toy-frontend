@@ -36,6 +36,8 @@ import {
   ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
 import * as d3 from 'd3';
+import { sankey, sankeyLinkHorizontal } from 'd3-sankey';
+import { SankeyLink, SankeyNode } from 'd3-sankey';
 import { DashboardContext, DashboardContextType } from './DashboardLayout';
 import { getEngagementDetailData } from '../../services/dashboardData';
 import { EngagementType } from '../../models/analytics/EngagementMetrics';
@@ -94,6 +96,34 @@ interface EngagementDetailData {
   flowData: EngagementFlowData;
   heatMapData: HeatMapDataPoint[];
   topHeatMapValue: number;
+}
+
+interface SankeyNodeExtra {
+  name: string;
+  value: number;
+  type?: string;
+}
+
+interface SankeyLinkExtra {
+  source: string | SankeyNodeExtra;
+  target: string | SankeyNodeExtra;
+  value: number;
+}
+
+type MySankeyNode = SankeyNode<SankeyNodeExtra, SankeyLinkExtra>;
+type MySankeyLink = SankeyLink<SankeyNodeExtra, SankeyLinkExtra>;
+
+interface SankeyData {
+  nodes: SankeyNodeExtra[];
+  links: SankeyLinkExtra[];
+}
+
+interface SankeyNodeWithPosition extends MySankeyNode {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  name: string;
 }
 
 export default function EngagementDetail({ 
@@ -168,88 +198,76 @@ export default function EngagementDetail({
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
     
+    // Format data for Sankey
+    const graph: SankeyData = {
+      nodes: flowData.nodes.map((d: any) => ({ name: d.name, value: d.value, type: d.type })),
+      links: flowData.links.map((d: any) => ({ source: d.source, target: d.target, value: d.value }))
+    };
+    
     // Create Sankey generator
-    const sankey = d3.sankey()
+    const sankeyGenerator = sankey<SankeyNodeExtra, SankeyLinkExtra>()
       .nodeWidth(20)
       .nodePadding(10)
       .extent([[0, 0], [width, height]]);
     
-    // Format data for Sankey
-    const graph = {
-      nodes: flowData.nodes.map(d => Object.assign({}, d)),
-      links: flowData.links.map(d => Object.assign({}, d))
-    };
-    
     // Generate Sankey layout
-    const sankeyData = sankey(graph);
+    const sankeyData = sankeyGenerator(graph);
     const nodes = sankeyData.nodes;
     const links = sankeyData.links;
     
-    // Add links
-    const link = svg.append('g')
-      .selectAll('.link')
+    // Create color scales
+    const nodeColorScale = d3.scaleOrdinal<string>()
+      .domain(nodes.map(n => n.name))
+      .range(d3.schemeCategory10);
+
+    const heatmapColorScale = d3.scaleLinear<string>()
+      .domain([0, data.topHeatMapValue / 2, data.topHeatMapValue])
+      .range(['#f7fbff', '#6baed6', '#08519c']);
+    
+    // Ensure nodes have all required properties
+    const typedNodes = nodes.map(node => {
+      return {
+        ...node,
+        x0: node.x0 || 0,
+        x1: node.x1 || 0,
+        y0: node.y0 || 0,
+        y1: node.y1 || 0,
+        name: node.name || ''
+      } as SankeyNodeWithPosition;
+    });
+
+    // Draw links
+    svg.append('g')
+      .selectAll('path')
       .data(links)
       .enter()
       .append('path')
-      .attr('class', 'link')
-      .attr('d', d3.sankeyLinkHorizontal())
-      .attr('stroke-width', d => Math.max(1, d.width))
-      .attr('stroke', '#ccc')
-      .attr('stroke-opacity', 0.3)
+      .attr('d', sankeyLinkHorizontal())
+      .attr('stroke', (d: MySankeyLink) => {
+        const source = d.source as MySankeyNode;
+        return nodeColorScale(source.name || '');
+      })
+      .attr('stroke-width', (d: MySankeyLink) => {
+        return Math.max(1, d.width || 0);
+      })
       .attr('fill', 'none')
-      .style('cursor', 'pointer');
+      .attr('opacity', 0.5);
     
-    // Add link hover effect
-    link.on('mouseover', function() {
-      d3.select(this)
-        .attr('stroke', theme.palette.primary.main)
-        .attr('stroke-opacity', 0.7);
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .attr('stroke', '#ccc')
-        .attr('stroke-opacity', 0.3);
-    });
-    
-    // Add link tooltips
-    link.append('title')
-      .text(d => `${d.source.name} → ${d.target.name}\n${d.value} engagements`);
-    
-    // Add nodes
-    const node = svg.append('g')
-      .selectAll('.node')
-      .data(nodes)
+    // Draw nodes
+    const nodesGroup = svg.append('g')
+      .selectAll('rect')
+      .data(typedNodes)
       .enter()
-      .append('g')
-      .attr('class', 'node')
-      .attr('transform', d => `translate(${d.x0},${d.y0})`)
-      .style('cursor', 'pointer');
-    
-    // Node rectangles
-    node.append('rect')
+      .append('rect')
+      .attr('x', d => d.x0)
+      .attr('y', d => d.y0)
       .attr('height', d => d.y1 - d.y0)
       .attr('width', d => d.x1 - d.x0)
-      .attr('fill', d => {
-        // Different colors based on node type
-        switch (d.type) {
-          case 'start':
-            return theme.palette.success.light;
-          case 'interaction':
-            return theme.palette.primary.main;
-          case 'completion':
-            return theme.palette.success.main;
-          case 'abandonment':
-            return theme.palette.error.light;
-          default:
-            return theme.palette.info.main;
-        }
-      })
-      .attr('stroke', 'none')
-      .attr('rx', 3)
-      .attr('ry', 3);
+      .attr('fill', d => nodeColorScale(d.name))
+      .attr('opacity', 0.8);
     
     // Node labels
-    node.append('text')
+    nodesGroup.append('text')
       .attr('x', d => d.x0 < width / 2 ? 6 + (d.x1 - d.x0) : -6)
       .attr('y', d => (d.y1 - d.y0) / 2)
       .attr('dy', '0.35em')
@@ -289,20 +307,13 @@ export default function EngagementDetail({
     
     // X scale for hours
     const x = d3.scaleBand()
-      .domain(hours.map(h => h.toString()))
       .range([0, width])
-      .padding(0.05);
+      .domain(Array.from({ length: 24 }, (_, i) => i.toString()));
     
     // Y scale for days
     const y = d3.scaleBand()
-      .domain(days)
       .range([0, height])
-      .padding(0.05);
-    
-    // Color scale
-    const colorScale = d3.scaleLinear<string>()
-      .domain([0, topHeatMapValue / 3, topHeatMapValue])
-      .range([theme.palette.info.light, theme.palette.primary.main, theme.palette.success.dark]);
+      .domain(days);
     
     // Add X axis
     svg.append('g')
@@ -325,23 +336,24 @@ export default function EngagementDetail({
       .style('font-size', '12px')
       .text('Engagement Activity by Day & Hour');
     
-    // Add heat map cells
-    svg.selectAll('rect')
+    // Create scales for heatmap
+    const colorScale = d3.scaleLinear<string>()
+      .domain([0, data.topHeatMapValue / 2, data.topHeatMapValue])
+      .range(['#f7fbff', '#6baed6', '#08519c']);
+
+    // Update heatmap cell colors
+    svg.selectAll('.heatmap-cell')
       .data(heatMapData)
       .enter()
       .append('rect')
+      .attr('class', 'heatmap-cell')
       .attr('x', d => x(d.hour.toString()) || 0)
       .attr('y', d => y(days[d.day]) || 0)
       .attr('width', x.bandwidth())
       .attr('height', y.bandwidth())
       .attr('fill', d => colorScale(d.value))
       .attr('rx', 2)
-      .attr('ry', 2)
-      .attr('stroke', 'none')
-      .style('cursor', 'pointer')
-      .append('title')
-      .text(d => `${days[d.day]} at ${d.hour}:00\n${d.value} engagements`);
-      
+      .attr('ry', 2);
   }, [loading, data, visualizationType, theme]);
   
   // Format durations

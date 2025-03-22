@@ -71,6 +71,16 @@ const StatBox = styled(Box)(({ theme }) => ({
   height: '100%',
 }));
 
+interface ExtendedTreatmentCategory {
+  id: string;
+  name: string;
+  medicalCategoryName?: string;
+}
+
+interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
+  treatmentCategory: ExtendedTreatmentCategory;
+}
+
 export interface GenentechAdTemplateProps extends Omit<BaseAdTemplateProps, 'adContent'> {
   adContent: AdContent;
   showStats?: boolean;
@@ -95,17 +105,17 @@ const GenentechAdTemplate: React.FC<GenentechAdTemplateProps> = ({
   ...baseProps
 }) => {
   const theme = useTheme();
-  const { treatmentCategory } = adContent;
+  const { company, creative, treatmentCategory } = adContent as ExtendedAdContent;
   
   // Apply Genentech-specific display customizations
-  const customizedAdContent: AdContent = {
+  const customizedAdContent: ExtendedAdContent = {
     ...adContent,
     company: {
-      ...adContent.company,
+      ...company,
       primaryColor: GENENTECH_COLORS.primary,
       secondaryColor: GENENTECH_COLORS.secondary,
       defaultDisplaySettings: {
-        ...adContent.company.defaultDisplaySettings,
+        ...company.defaultDisplaySettings,
         backgroundColor: '#ffffff',
         textColor: GENENTECH_COLORS.textDark,
         cornerRadius: 4,
@@ -150,7 +160,7 @@ const GenentechAdTemplate: React.FC<GenentechAdTemplateProps> = ({
         {/* Category-specific header */}
         <CategoryHeader categoryId={treatmentCategory.id}>
           <Typography variant="subtitle2">
-            {treatmentCategory.medicalCategoryName}: {treatmentCategory.name}
+            {treatmentCategory.medicalCategoryName || 'Medical Category'}: {treatmentCategory.name}
           </Typography>
         </CategoryHeader>
         

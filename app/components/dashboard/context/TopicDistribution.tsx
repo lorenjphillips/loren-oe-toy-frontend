@@ -88,27 +88,30 @@ export const TopicDistribution: React.FC<TopicDistributionProps> = ({
           cy="50%"
           outerRadius={150}
           fill="#8884d8"
-          label={({
-            cx,
-            cy,
-            midAngle,
-            innerRadius,
-            outerRadius,
-            percent,
-            category
-          }: PieLabelRenderProps) => {
-            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-            const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-            const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+          label={(props: PieLabelRenderProps) => {
+            const {
+              cx = 0,
+              cy = 0,
+              midAngle = 0,
+              innerRadius = 0,
+              outerRadius = 0,
+              percent = 0,
+              name = ''
+            } = props;
+            
+            const radius = Number(innerRadius) + (Number(outerRadius) - Number(innerRadius)) * 0.5;
+            const x = Number(cx) + radius * Math.cos(-Number(midAngle) * (Math.PI / 180));
+            const y = Number(cy) + radius * Math.sin(-Number(midAngle) * (Math.PI / 180));
+            
             return (
               <text
                 x={x}
                 y={y}
                 fill="white"
-                textAnchor={x > cx ? 'start' : 'end'}
+                textAnchor={x > Number(cx) ? 'start' : 'end'}
                 dominantBaseline="central"
               >
-                {`${category} (${(percent * 100).toFixed(1)}%)`}
+                {`${name} (${(Number(percent) * 100).toFixed(1)}%)`}
               </text>
             );
           }}

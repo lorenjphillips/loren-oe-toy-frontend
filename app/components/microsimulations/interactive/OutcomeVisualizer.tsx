@@ -31,8 +31,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InsightsIcon from '@mui/icons-material/Insights';
 import MedicationIcon from '@mui/icons-material/Medication';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
+import BiotechIcon from '@mui/icons-material/Biotech';
 import { ScenarioOutcome, PatientInfo } from '../../../models/microsimulation';
 import { clinicalColors, getStatusColor, shadows, animationDurations } from '../../../styles/microsimulation';
+
+// Alias for BloodtestIcon since it doesn't exist in Material UI
+const BloodtestIcon = BiotechIcon;
 
 interface OutcomeVisualizerProps {
   outcome: ScenarioOutcome;
