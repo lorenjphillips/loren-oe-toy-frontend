@@ -4,7 +4,7 @@
  * Displays a comprehensive dashboard of medical topic trends
  * with emerging topics, correlations, seasonal patterns, and forecasts.
  */
-import React, { useState } from 'react';
+import React, { useState, ReactNode } from 'react';
 import { 
   Box, 
   Container, 
@@ -114,17 +114,17 @@ export default function TrendsDashboard() {
   };
   
   // Handle filters
-  const handleCategoryChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleCategoryChange = (event: SelectChangeEvent<string>, child: ReactNode) => {
     setFilters({
       ...filters,
       category: event.target.value as string
     });
   };
   
-  const handleConfidenceChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleConfidenceChange = (event: SelectChangeEvent<number>, child: ReactNode) => {
     setFilters({
       ...filters,
-      minConfidence: event.target.value as number
+      minConfidence: Number(event.target.value)
     });
   };
   

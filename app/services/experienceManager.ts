@@ -1,5 +1,5 @@
 import { classifyMedicalQuestion, MedicalClassification } from './classification';
-import { contentTimingService } from './contentTiming';
+import { timeEstimator } from './timeEstimation';
 import { ContextualRelevanceAnalyzer } from './contextualRelevance';
 import { EnhancedMappingResult } from './confidenceScoring';
 import { AdType } from '../types/adTypeUnified';
@@ -15,17 +15,12 @@ export enum AdExperienceType {
 }
 
 /**
- * Contextual data about the question and environment
+ * Experience context interface
  */
 export interface ExperienceContext {
   question: string;
   classification?: MedicalClassification;
   estimatedWaitTimeMs?: number;
-  mapping?: EnhancedMappingResult;
-  userPreferences?: {
-    preferInteractive?: boolean;
-    preferVisual?: boolean;
-  };
   deviceCapabilities?: {
     isHighPerformance: boolean;
     isMobile: boolean;
@@ -33,24 +28,33 @@ export interface ExperienceContext {
 }
 
 /**
- * Configuration for an ad experience
+ * Experience result interface
  */
-export interface ExperienceConfig {
-  type: AdExperienceType;
-  priority: number; // 0-10 where 10 is highest
-  minWaitTimeMs?: number; // Minimum wait time required
-  maxWaitTimeMs?: number; // Maximum wait time to show this experience
-  settings?: Record<string, any>; // Experience-specific settings
-}
-
-/**
- * Result from the experience manager containing the selected experience and configuration
- */
-export interface ExperienceSelection {
+export interface ExperienceResult {
   selectedType: AdExperienceType;
   fallbackType?: AdExperienceType;
   config: ExperienceConfig;
   reasoning: string[];
+}
+
+/**
+ * Experience config interface
+ */
+export interface ExperienceConfig {
+  type: AdExperienceType;
+  priority: number;
+  minWaitTimeMs?: number; // Minimum wait time required
+  maxWaitTimeMs?: number; // Maximum wait time to show this experience
+  settings: {
+    adType?: AdType;
+    [key: string]: any;
+  };
+}
+
+// Helper function to check if classification has treatment categories
+function hasTreatmentCategories(classification: MedicalClassification | undefined): boolean {
+  if (!classification) return false;
+  return Boolean(classification.categories?.some(category => category.includes('treatment') || category.includes('medication')));
 }
 
 /**
@@ -60,190 +64,7 @@ export interface ExperienceSelection {
  * experience type based on the question context, estimated wait time,
  * and other factors.
  */
-class ExperienceManager {
-  /**
-   * Evaluates question and context to determine the optimal experience type
-   */
-  async selectExperience(context: ExperienceContext): Promise<ExperienceSelection> {
-    const { question } = context;
-    
-    // If classification not provided, get it
-    const classification = context.classification || 
-      await classifyMedicalQuestion(question);
-      
-    // If wait time not provided, estimate it
-    const waitTime = await contentTimingService.estimateTime(question, classification);
-    
-    // Get question complexity
-    const analyzer = new ContextualRelevanceAnalyzer();
-    const complexityResult = await analyzer.analyzeContextualRelevance(question, classification);
-    
-    // Determine device capabilities if not provided
-    const deviceCapabilities = context.deviceCapabilities || this.detectDeviceCapabilities();
-    
-    // Generate experience options based on classification and context
-    const options = this.generateExperienceOptions({
-      ...context,
-      classification,
-      estimatedWaitTimeMs: waitTime,
-      deviceCapabilities,
-    });
-    
-    // Score and select the best experience
-    const selection = this.scoreAndSelectExperience(options, {
-      ...context,
-      classification,
-      estimatedWaitTimeMs: waitTime,
-      deviceCapabilities, 
-    });
-    
-    return selection;
-  }
-
-  /**
-   * Generate possible experience configurations based on context
-   */
-  private generateExperienceOptions(context: ExperienceContext): ExperienceConfig[] {
-    const { classification, estimatedWaitTimeMs, deviceCapabilities } = context;
-    const options: ExperienceConfig[] = [];
-    
-    // Microsimulation option - best for treatment questions with longer wait times
-    if (classification?.categories.some(c => c.includes('treatment') || c.includes('medication'))) {
-      options.push({
-        type: AdExperienceType.MICROSIMULATION,
-        priority: 8,
-        minWaitTimeMs: 3000, // Only show for longer waits
-        settings: {
-          interactive: true,
-          showDecisionTree: true,
-        }
-      });
-    }
-    
-    // Knowledge graph option - best for mechanism/relationship questions
-    if (classification?.categories.some(c => 
-      c.includes('mechanism') || 
-      c.includes('pathophysiology') || 
-      c.includes('relationship'))) {
-      options.push({
-        type: AdExperienceType.KNOWLEDGE_GRAPH,
-        priority: 9,
-        minWaitTimeMs: 2000,
-        settings: {
-          interactive: deviceCapabilities?.isHighPerformance ?? true,
-          focusOnRelationships: true,
-        }
-      });
-    }
-    
-    // Evidence card option - best for diagnostic questions or short waits
-    if (classification?.categories.some(c => 
-      c.includes('diagnosis') || 
-      c.includes('symptoms') || 
-      c.includes('evidence'))) {
-      options.push({
-        type: AdExperienceType.EVIDENCE_CARD,
-        priority: 7,
-        maxWaitTimeMs: 5000, // Better for shorter wait times
-        settings: {
-          compact: estimatedWaitTimeMs ? estimatedWaitTimeMs < 3000 : false,
-          focusOnEvidence: true,
-        }
-      });
-    }
-    
-    // Standard ad option - fallback for everything
-    options.push({
-      type: AdExperienceType.STANDARD,
-      priority: 5,
-      settings: {
-        adType: AdType.SPONSORED_CONTENT,
-      }
-    });
-    
-    return options;
-  }
-
-  /**
-   * Score each experience option and select the best one
-   */
-  private scoreAndSelectExperience(
-    options: ExperienceConfig[], 
-    context: ExperienceContext
-  ): ExperienceSelection {
-    const { estimatedWaitTimeMs, deviceCapabilities } = context;
-    let highestScore = -1;
-    let bestOption: ExperienceConfig | null = null;
-    let fallbackOption: ExperienceConfig | null = null;
-    const reasoning: string[] = [];
-    
-    // Score each option
-    for (const option of options) {
-      let score = option.priority;
-      
-      // Adjust score based on wait time constraints
-      if (estimatedWaitTimeMs !== undefined) {
-        if (option.minWaitTimeMs && estimatedWaitTimeMs < option.minWaitTimeMs) {
-          score -= 3;
-          reasoning.push(`${option.type} downgraded: wait time ${estimatedWaitTimeMs}ms below minimum ${option.minWaitTimeMs}ms`);
-        }
-        
-        if (option.maxWaitTimeMs && estimatedWaitTimeMs > option.maxWaitTimeMs) {
-          score -= 2;
-          reasoning.push(`${option.type} downgraded: wait time ${estimatedWaitTimeMs}ms above maximum ${option.maxWaitTimeMs}ms`);
-        }
-      }
-      
-      // Adjust score based on device capabilities
-      if (deviceCapabilities) {
-        if (!deviceCapabilities.isHighPerformance) {
-          if (option.type === AdExperienceType.MICROSIMULATION || 
-              option.type === AdExperienceType.KNOWLEDGE_GRAPH) {
-            score -= 2;
-            reasoning.push(`${option.type} downgraded: device performance not optimal`);
-          }
-        }
-        
-        if (deviceCapabilities.isMobile && option.type === AdExperienceType.KNOWLEDGE_GRAPH) {
-          score -= 1;
-          reasoning.push(`${option.type} slightly downgraded: mobile device has smaller screen`);
-        }
-      }
-      
-      // Keep track of best and fallback options
-      if (score > highestScore) {
-        if (bestOption) {
-          fallbackOption = bestOption;
-        }
-        highestScore = score;
-        bestOption = option;
-        reasoning.push(`${option.type} selected as best option with score ${score}`);
-      } else if (!fallbackOption || score > fallbackOption.priority) {
-        fallbackOption = option;
-        reasoning.push(`${option.type} selected as fallback option with score ${score}`);
-      }
-    }
-    
-    // Default to standard if nothing else works
-    if (!bestOption) {
-      bestOption = {
-        type: AdExperienceType.STANDARD,
-        priority: 5,
-        settings: {
-          adType: AdType.SPONSORED_CONTENT,
-        }
-      };
-      reasoning.push('Defaulted to standard ad experience as no options were viable');
-    }
-    
-    return {
-      selectedType: bestOption.type,
-      fallbackType: fallbackOption?.type,
-      config: bestOption,
-      reasoning,
-    };
-  }
-  
+export class ExperienceManager {
   /**
    * Detect device capabilities
    */
@@ -268,47 +89,149 @@ class ExperienceManager {
       isMobile: false
     };
   }
-  
+
   /**
-   * Handle transitions between different experience types if needed
+   * Evaluates question and context to determine the optimal experience type
    */
-  async transitionToExperience(
-    currentType: AdExperienceType, 
-    newType: AdExperienceType,
-    context: ExperienceContext
-  ): Promise<ExperienceConfig> {
-    // If types are the same, no transition needed
-    if (currentType === newType) {
-      const options = this.generateExperienceOptions(context);
-      const matchingOption = options.find(opt => opt.type === newType);
-      return matchingOption || options[options.length - 1]; // Fallback to last option
+  async selectExperience(context: ExperienceContext): Promise<ExperienceResult> {
+    const { question } = context;
+    
+    // Get classification if not provided
+    const classification = context.classification ||
+      await classifyMedicalQuestion(question);
+
+    // Get question complexity
+    const analyzer = new ContextualRelevanceAnalyzer();
+    const complexityResult = await analyzer.analyzeContextualRelevance(question);
+
+    // Get wait time estimation
+    const waitTimeResult = await timeEstimator.estimateTime(question, classification);
+    const waitTimeMs = waitTimeResult.initialEstimate * 1000; // Convert seconds to milliseconds
+
+    // Determine device capabilities if not provided
+    const deviceCapabilities = context.deviceCapabilities || 
+      this.detectDeviceCapabilities();
+
+    // Generate experience options
+    const options = this.generateExperienceOptions({
+      ...context,
+      classification,
+      estimatedWaitTimeMs: waitTimeMs,
+      deviceCapabilities,
+    });
+
+    // Select best option based on scoring
+    return this.selectBestOption(options, {
+      ...context,
+      classification,
+      estimatedWaitTimeMs: waitTimeMs,
+      deviceCapabilities,
+    });
+  }
+
+  /**
+   * Generate experience options based on context
+   */
+  private generateExperienceOptions(context: ExperienceContext): ExperienceConfig[] {
+    const options: ExperienceConfig[] = [];
+    const { classification, estimatedWaitTimeMs } = context;
+
+    // Add options based on context
+    if (hasTreatmentCategories(classification)) {
+      options.push({
+        type: AdExperienceType.MICROSIMULATION,
+        priority: 8,
+        minWaitTimeMs: 5000,
+        settings: {
+          adType: AdType.SPONSORED_CONTENT,
+        }
+      });
     }
-    
-    // Get default config for the new type
-    const options = this.generateExperienceOptions(context);
-    const newConfig = options.find(opt => opt.type === newType);
-    
-    if (!newConfig) {
-      // Default configuration if specific type not found
-      return {
-        type: newType,
-        priority: 5,
-        settings: {}
-      };
-    }
-    
-    // Add transition settings
-    return {
-      ...newConfig,
-      settings: {
-        ...newConfig.settings,
-        isTransitioning: true,
-        previousType: currentType,
+
+    // Add more options...
+
+    return options;
+  }
+
+  /**
+   * Selects the best option from available experience options
+   */
+  private selectBestOption(options: ExperienceConfig[], context: ExperienceContext): ExperienceResult {
+    let highestScore = -1;
+    let bestOption: ExperienceConfig | undefined;
+    let fallbackOption: ExperienceConfig | undefined;
+    const reasoning: string[] = [];
+
+    // Score and select options
+    for (const option of options) {
+      const score = this.scoreOption(option);
+      
+      if (score > highestScore) {
+        highestScore = score;
+        bestOption = option;
+        reasoning.push(`${option.type} selected as best option with score ${score}`);
+      } else if (!fallbackOption || score > fallbackOption.priority) {
+        fallbackOption = option;
+        reasoning.push(`${option.type} selected as fallback option with score ${score}`);
       }
+    }
+
+    // Return result with fallback to standard if needed
+    return {
+      selectedType: bestOption?.type || AdExperienceType.STANDARD,
+      fallbackType: fallbackOption?.type,
+      config: bestOption || {
+        type: AdExperienceType.STANDARD,
+        priority: 5,
+        settings: {
+          adType: AdType.SPONSORED_CONTENT,
+        }
+      },
+      reasoning,
     };
   }
-}
 
-// Export singleton instance
-const experienceManager = new ExperienceManager();
-export default experienceManager; 
+  /**
+   * Score an individual option
+   */
+  private scoreOption(option: ExperienceConfig): number {
+    // Simple scoring based on priority
+    return option.priority;
+  }
+
+  async determineExperience(question: string, context: ExperienceContext = { question }): Promise<ExperienceResult> {
+    // Get classification if not provided
+    const classification = context.classification ||
+      await classifyMedicalQuestion(question);
+
+    // Get question complexity
+    const analyzer = new ContextualRelevanceAnalyzer();
+    const complexityResult = await analyzer.analyzeContextualRelevance(question);
+
+    // Get wait time estimation
+    const waitTimeResult = await timeEstimator.estimateTime(question, classification);
+    const waitTimeMs = waitTimeResult.initialEstimate * 1000; // Convert seconds to milliseconds
+
+    // Determine device capabilities if not provided
+    const deviceCapabilities = context.deviceCapabilities || 
+      this.detectDeviceCapabilities();
+
+    // Generate experience options
+    const options = this.generateExperienceOptions({
+      ...context,
+      classification,
+      estimatedWaitTimeMs: waitTimeMs,
+      deviceCapabilities,
+    });
+
+    // Select best option based on scoring
+    const result = await this.selectExperience({
+      ...context,
+      classification,
+      estimatedWaitTimeMs: waitTimeMs,
+      deviceCapabilities,
+    });
+
+    return result;
+  }
+}

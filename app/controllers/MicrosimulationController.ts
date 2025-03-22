@@ -57,9 +57,9 @@ export interface ExtendedAd extends Omit<Ad, 'categories'> {
   categories?: string[];
 }
 
-// Extend MedicalClassification to include categories
+// Extend MedicalClassification with additional properties
 export interface ExtendedMedicalClassification extends MedicalClassification {
-  categories?: string[];
+  medicalCategoryName?: string;
 }
 
 // Create an extended version of the analytics service

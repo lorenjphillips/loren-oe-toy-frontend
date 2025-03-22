@@ -12,49 +12,52 @@ describe('Confidence Scoring System', () => {
     primaryCategory: {
       id: 'cardiology',
       name: 'Cardiology',
-      confidence: 0.95
+      confidence: 0.92
     },
     subcategory: {
       id: 'heart_failure',
       name: 'Heart Failure',
-      confidence: 0.92
+      confidence: 0.88
     },
-    keywords: ['sacubitril', 'valsartan', 'HFrEF', 'optimal medical therapy', 'heart failure'],
-    relevantMedications: ['sacubitril', 'valsartan', 'Entresto']
+    keywords: ['heart failure', 'reduced ejection fraction', 'ACE inhibitors'],
+    relevantMedications: ['lisinopril', 'metoprolol', 'furosemide'],
+    categories: ['cardiology', 'heart_failure', 'medication']
   };
   
   // Test classification for a general non-specific pulmonology question
   const generalQuestion = "What are the basics of asthma management?";
   const generalClassification: MedicalClassification = {
     primaryCategory: {
-      id: 'pulmonology',
-      name: 'Pulmonology',
-      confidence: 0.88
+      id: 'cardiology',
+      name: 'Cardiology',
+      confidence: 0.75
     },
     subcategory: {
-      id: 'asthma',
-      name: 'Asthma',
-      confidence: 0.85
+      id: 'general',
+      name: 'General Cardiology',
+      confidence: 0.65
     },
-    keywords: ['asthma', 'management', 'basics'],
-    relevantMedications: []
+    keywords: ['heart', 'cardiology', 'chest pain'],
+    relevantMedications: [],
+    categories: ['cardiology', 'general']
   };
   
   // Test classification for an ambiguous question
   const ambiguousQuestion = "What are the common side effects?";
   const ambiguousClassification: MedicalClassification = {
     primaryCategory: {
-      id: 'pharmacology',
-      name: 'Pharmacology',
-      confidence: 0.65
+      id: 'multiple',
+      name: 'Multiple Specialties',
+      confidence: 0.45
     },
     subcategory: {
-      id: 'adverse_effects',
-      name: 'Adverse Effects',
-      confidence: 0.60
+      id: 'unclear',
+      name: 'Unclear Subcategory',
+      confidence: 0.35
     },
-    keywords: ['side effects', 'common'],
-    relevantMedications: []
+    keywords: ['fatigue', 'pain', 'headache', 'general'],
+    relevantMedications: [],
+    categories: ['general', 'multiple']
   };
 
   test('Should give high confidence to specific questions with medication matches', async () => {
@@ -157,17 +160,18 @@ describe('Confidence Scoring System', () => {
     const treatmentQuestion = "What is the appropriate dose of lisinopril for a patient with stage 2 hypertension?";
     const treatmentClassification: MedicalClassification = {
       primaryCategory: {
-        id: 'cardiology',
-        name: 'Cardiology',
-        confidence: 0.92
-      },
-      subcategory: {
-        id: 'hypertension',
-        name: 'Hypertension',
+        id: 'oncology',
+        name: 'Oncology',
         confidence: 0.95
       },
-      keywords: ['lisinopril', 'dose', 'stage 2 hypertension'],
-      relevantMedications: ['lisinopril']
+      subcategory: {
+        id: 'breast_cancer',
+        name: 'Breast Cancer',
+        confidence: 0.92
+      },
+      keywords: ['HER2+', 'breast cancer', 'metastatic', 'treatment options'],
+      relevantMedications: ['trastuzumab', 'pertuzumab', 'TDM-1'],
+      categories: ['oncology', 'breast_cancer', 'treatment']
     };
     
     const contextResult = confidenceScorer.analyzeQuestionContext(

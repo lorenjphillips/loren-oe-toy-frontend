@@ -1,8 +1,8 @@
 import React from 'react';
-import { AdContent } from '../../models/adTypes';
+import { GuardrailedAdContent } from '../../models/ethicalAITypes';
 
 interface SeparationIndicatorProps {
-  adContent: AdContent;
+  adContent: GuardrailedAdContent;
   position?: 'top' | 'bottom' | 'inline';
   size?: 'small' | 'medium' | 'large';
 }

@@ -27,7 +27,8 @@ import {
   CircularProgress,
   TextField,
   InputAdornment,
-  Autocomplete
+  Autocomplete,
+  ListItemButton
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
@@ -323,9 +324,8 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({
       <DialogContent sx={{ px: 1, py: 0 }}>
         <List sx={{ maxHeight: 300, overflow: 'auto' }}>
           {filteredTests.map((test) => (
-            <ListItem 
+            <ListItemButton
               key={test.id}
-              button
               selected={selectedTest === test.id}
               onClick={() => handleTestSelect(test.id)}
               sx={{
@@ -366,7 +366,7 @@ export const DiagnosticTool: React.FC<DiagnosticToolProps> = ({
                   fontWeight: selectedTest === test.id ? 600 : 400,
                 }}
               />
-            </ListItem>
+            </ListItemButton>
           ))}
           {filteredTests.length === 0 && (
             <Box sx={{ p: 3, textAlign: 'center' }}>

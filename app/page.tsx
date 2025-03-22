@@ -13,6 +13,8 @@ import TimingIndicator from './components/TimingIndicator';
 import { timeEstimator, TimeEstimationResult } from './services/timeEstimation';
 import { contentTimingService } from './services/contentTiming';
 import Link from 'next/link';
+import { styled as muiStyled } from '@mui/material/styles';
+import { ButtonProps } from '@mui/material/Button';
 
 // Phase 4 imports
 import { FeedbackButton } from './components/feedback/FeedbackButton';
@@ -300,14 +302,15 @@ export default function Home() {
             <Typography variant="h6" style={{ flexGrow: 1, fontFamily: 'Roboto, sans-serif' }}>
               OpenEvidence Medical AI
             </Typography>
-            <ReviewButton 
-              variant="contained" 
-              color="success"
-              component={Link}
-              href="/review"
-            >
-              Reviewer Portal
-            </ReviewButton>
+            <Link href="/review" passHref style={{ textDecoration: 'none' }}>
+              <Button 
+                variant="contained" 
+                color="success"
+                sx={{ margin: '0 1rem' }}
+              >
+                Reviewer Portal
+              </Button>
+            </Link>
             <Link href="/knowledge-graph" passHref style={{ textDecoration: 'none', color: 'inherit', marginRight: '10px' }}>
               <Button color="inherit">Knowledge Graph</Button>
             </Link>

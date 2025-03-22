@@ -22,6 +22,7 @@ export interface MedicalClassification {
     gender?: string;
   };
   possibleIntents?: string[];
+  categories: string[];
 }
 
 /**
@@ -179,7 +180,7 @@ export class MedicalQuestionClassifier {
    */
   async classifyQuestion(
     question: string,
-    history: { role: string; content: string }[] = [],
+    history: { role: 'system' | 'user' | 'assistant'; content: string }[] = [],
     options: ClassificationOptions = {}
   ): Promise<MedicalClassification> {
     const mergedOptions = { ...this.defaultOptions, ...options };
@@ -238,7 +239,7 @@ Your response must be valid JSON with the exact structure shown above.
         max_tokens: mergedOptions.maxTokens,
         messages: [
           ...history,
-          { role: 'system', content: prompt },
+          { role: 'system' as const, content: prompt },
         ],
         response_format: { type: 'json_object' },
       });
@@ -275,6 +276,7 @@ Your response must be valid JSON with the exact structure shown above.
         },
         keywords: [],
         possibleIntents: ['error_in_classification'],
+        categories: [],
       };
     }
   }
@@ -303,7 +305,7 @@ export const medicalClassifier = new MedicalQuestionClassifier();
  */
 export async function classifyMedicalQuestion(
   question: string,
-  history: { role: string; content: string }[] = [],
+  history: { role: 'system' | 'user' | 'assistant'; content: string }[] = [],
   options: ClassificationOptions = {}
 ): Promise<MedicalClassification> {
   try {

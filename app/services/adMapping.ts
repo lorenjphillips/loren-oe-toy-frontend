@@ -141,7 +141,8 @@ export class PharmaAdMapper {
       primaryCategory, 
       subcategory, 
       keywords = [],
-      relevantMedications = []
+      relevantMedications = [],
+      categories = []
     } = classification;
     
     const matches: CompanyMatch[] = [];
@@ -326,17 +327,18 @@ export async function runMappingExample(): Promise<void> {
   // Create a simple test classification
   const testClassification: MedicalClassification = {
     primaryCategory: {
-      id: "oncology",
-      name: "Oncology",
+      id: 'cardiology',
+      name: 'Cardiology',
       confidence: 0.95
     },
     subcategory: {
-      id: "breast_cancer",
-      name: "Breast Cancer",
+      id: 'heart_failure',
+      name: 'Heart Failure',
       confidence: 0.92
     },
-    keywords: ["breast cancer", "HER2+", "metastatic", "hormonal therapy"],
-    relevantMedications: ["herceptin", "tamoxifen"]
+    keywords: ['sacubitril', 'valsartan', 'HFrEF', 'optimal medical therapy', 'heart failure'],
+    relevantMedications: ['sacubitril', 'valsartan', 'Entresto'],
+    categories: ['cardiology', 'heart_failure', 'medication']
   };
   
   console.log("Example Medical Classification:");

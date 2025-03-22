@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { AdContent } from '../../models/adTypes';
+import { GuardrailedAdContent } from '../../models/ethicalAITypes';
 
 interface TransparencyPanelProps {
-  adContent: AdContent;
+  adContent: GuardrailedAdContent;
   confidenceScore?: number;
 }
 
@@ -66,8 +66,8 @@ const TransparencyPanel: React.FC<TransparencyPanelProps> = ({
             <div className="transparency-section">
               <h5>Disclaimers</h5>
               <ul>
-                {disclaimers.map((disclaimer, index) => (
-                  <li key={index}>{disclaimer}</li>
+                {disclaimers.map((disclaimer: string, index: number) => (
+                  <li key={`disclaimer-${index}`}>{disclaimer}</li>
                 ))}
               </ul>
             </div>
@@ -77,8 +77,8 @@ const TransparencyPanel: React.FC<TransparencyPanelProps> = ({
             <div className="transparency-section">
               <h5>Clinical citations</h5>
               <ul>
-                {citations.map((citation, index) => (
-                  <li key={index}>{citation}</li>
+                {citations.map((citation: string, index: number) => (
+                  <li key={`citation-${index}`}>{citation}</li>
                 ))}
               </ul>
             </div>

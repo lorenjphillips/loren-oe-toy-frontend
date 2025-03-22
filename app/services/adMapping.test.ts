@@ -29,7 +29,8 @@ export async function runAdMappingTests() {
           confidence: 0.92
         },
         keywords: ["breast cancer", "HER2+", "metastatic", "hormonal therapy"],
-        relevantMedications: ["herceptin", "tamoxifen"]
+        relevantMedications: ["herceptin", "tamoxifen"],
+        categories: ['oncology', 'breast_cancer', 'medication']
       },
       expectedCompanies: ["pfizer", "genentech"]
     },
@@ -47,7 +48,8 @@ export async function runAdMappingTests() {
           confidence: 0.85
         },
         keywords: ["joint pain", "inflammation", "autoimmune", "DMARDs"],
-        relevantMedications: ["humira", "enbrel"]
+        relevantMedications: ["humira", "enbrel"],
+        categories: ['immunology', 'rheumatoid_arthritis', 'medication']
       },
       expectedCompanies: ["pfizer", "gsk"]
     },
@@ -65,7 +67,8 @@ export async function runAdMappingTests() {
           confidence: 0.89
         },
         keywords: ["wheezing", "shortness of breath", "inhaler", "corticosteroids"],
-        relevantMedications: ["advair", "flovent"]
+        relevantMedications: ["advair", "flovent"],
+        categories: ['respiratory', 'asthma', 'medication']
       },
       expectedCompanies: ["gsk"]
     },
@@ -83,7 +86,8 @@ export async function runAdMappingTests() {
           confidence: 0.93
         },
         keywords: ["blood sugar", "insulin", "type 2", "glycemic control"],
-        relevantMedications: ["humalog", "trulicity"]
+        relevantMedications: ["humalog", "trulicity"],
+        categories: ['endocrinology', 'diabetes', 'medication']
       },
       expectedCompanies: ["eli_lilly"]
     },
@@ -101,7 +105,8 @@ export async function runAdMappingTests() {
           confidence: 0.83
         },
         keywords: ["memory loss", "cognitive decline", "dementia", "amyloid"],
-        relevantMedications: ["aduhelm", "donanemab"]
+        relevantMedications: ["aduhelm", "donanemab"],
+        categories: ['neurology', 'alzheimers', 'medication']
       },
       expectedCompanies: ["eli_lilly"]
     },
@@ -119,7 +124,8 @@ export async function runAdMappingTests() {
           confidence: 0.88
         },
         keywords: ["vision loss", "retina", "wet AMD", "anti-VEGF"],
-        relevantMedications: ["lucentis", "eylea"]
+        relevantMedications: ["lucentis", "eylea"],
+        categories: ['ophthalmology', 'macular_degeneration', 'medication']
       },
       expectedCompanies: ["genentech"]
     }
