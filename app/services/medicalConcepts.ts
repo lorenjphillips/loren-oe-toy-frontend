@@ -17,7 +17,8 @@ import {
   RelationshipType, 
   EvidenceStrength,
   PharmaAffiliation,
-  Citation
+  Citation,
+  PharmaCompany
 } from '../models/knowledgeGraph';
 
 /**
@@ -34,7 +35,7 @@ export interface MedicalConceptSearchOptions {
 }
 
 // Mock database of pharma companies
-const PHARMA_COMPANIES = [
+const PHARMA_COMPANIES: PharmaCompany[] = [
   {
     id: 'pfizer',
     name: 'Pfizer',
@@ -740,15 +741,15 @@ export function getTreatmentsByPharmaCompany(companyId: string): TreatmentNode[]
 }
 
 /**
- * Get pharma company information
+ * Get pharma company by ID
  */
-export function getPharmaCompany(companyId: string) {
+export function getPharmaCompany(companyId: string): PharmaCompany | undefined {
   return PHARMA_COMPANIES.find(company => company.id === companyId);
 }
 
 /**
  * Get all pharma companies
  */
-export function getAllPharmaCompanies() {
+export function getAllPharmaCompanies(): PharmaCompany[] {
   return [...PHARMA_COMPANIES];
 } 

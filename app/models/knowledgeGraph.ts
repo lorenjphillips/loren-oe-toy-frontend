@@ -3,6 +3,16 @@
  * Defines the structure for medical concepts, treatments, and their relationships
  */
 
+/**
+ * Represents a pharmaceutical company
+ */
+export interface PharmaCompany {
+  id: string;
+  name: string;
+  website: string;
+  logoUrl: string;
+}
+
 export enum NodeType {
   MEDICAL_CONCEPT = 'MEDICAL_CONCEPT',
   TREATMENT = 'TREATMENT',

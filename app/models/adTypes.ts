@@ -26,6 +26,7 @@ export interface TreatmentCategory {
   medicalCategory: string;
   relevantSpecialties: string[];
   description?: string;
+  keywords?: string[];
 }
 
 /**

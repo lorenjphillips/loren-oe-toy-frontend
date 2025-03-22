@@ -156,7 +156,13 @@ export function getAllEnv(): Partial<EnvVars> {
   for (const key in DEFAULT_ENV) {
     const envKey = key as keyof EnvVars;
     try {
-      env[envKey] = getEnvVar(envKey);
+      // We need to explicitly type cast the value to match the expected type
+      const value = getEnvVar(envKey);
+      // Only set the value if it's valid for this key
+      if (value !== undefined) {
+        // Use type assertion since we know this is correctly typed due to getEnvVar
+        (env as any)[envKey] = value;
+      }
     } catch (error) {
       // Skip any variables that fail to load
     }

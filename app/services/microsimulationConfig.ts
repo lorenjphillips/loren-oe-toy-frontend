@@ -89,9 +89,9 @@ export class MicrosimulationConfigService {
         // Basic keyword matching from the question to find most relevant scenario
         const keywordMatchScores = matchingScenarios.map(scenario => {
           const questionLower = question.toLowerCase();
-          const keywordMatches = treatmentCategory.keywords.filter(
+          const keywordMatches = treatmentCategory.keywords ? treatmentCategory.keywords.filter(
             keyword => questionLower.includes(keyword.toLowerCase())
-          ).length;
+          ).length : 0;
           
           return {
             scenarioId: scenario.id,
@@ -471,5 +471,33 @@ export class MicrosimulationConfigService {
       displayTiming: 'feedback',
       associatedTreatmentIds: ['thiazide_diuretics', 'hypertension_management']
     });
+  }
+
+  // In the findMatchingTreatmentCategory function
+  public findMatchingTreatmentCategory(question: string, categories: TreatmentCategory[]): TreatmentCategory | undefined {
+    const questionLower = question.toLowerCase();
+    
+    for (const treatmentCategory of categories) {
+      // Check if the treatment matches the question directly
+      if (
+        questionLower.includes(treatmentCategory.name.toLowerCase()) ||
+        questionLower.includes(treatmentCategory.medicalCategory.toLowerCase())
+      ) {
+        return treatmentCategory;
+      }
+      
+      // Check for keyword matches
+      if (treatmentCategory.keywords && treatmentCategory.keywords.length > 0) {
+        const keywordMatches = treatmentCategory.keywords.filter(
+          (keyword: string) => questionLower.includes(keyword.toLowerCase())
+        );
+        
+        if (keywordMatches.length > 0) {
+          return treatmentCategory;
+        }
+      }
+    }
+    
+    return undefined;
   }
 } 
