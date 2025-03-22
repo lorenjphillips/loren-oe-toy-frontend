@@ -161,3 +161,41 @@ openevidence-ad-platform/
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Deployment
+
+### Quick Deployment to Vercel
+
+This project is optimized for deployment on Vercel. To deploy:
+
+1. **Using the Deployment Script (Recommended)**
+
+```bash
+# Install dependencies if not already installed
+npm install
+
+# Run the deployment script
+npm run deploy
+```
+
+2. **Manual Deployment**
+
+```bash
+# Install dependencies
+npm install
+
+# Deploy to preview environment
+npm run deploy:preview
+
+# Deploy to production
+npm run deploy:production
+```
+
+3. **Verify Deployment**
+
+```bash
+# Run verification checklist
+npm run verify
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).

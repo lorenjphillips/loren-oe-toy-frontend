@@ -4,6 +4,7 @@
   "devCommand": "npm run dev",
   "framework": "nextjs",
   "outputDirectory": ".next",
+  "regions": ["iad1", "sfo1"],
   "env": {
     "OPENAI_API_KEY": "@openai-api-key",
     "OPENAI_MODEL": "@openai-model",
@@ -42,5 +43,47 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/classification.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
+    "api/ad-content.js": {
+      "memory": 512,
+      "maxDuration": 5
+    },
+    "api/analytics/impression.js": {
+      "memory": 256,
+      "maxDuration": 3
+    },
+    "api/analytics/click.js": {
+      "memory": 256,
+      "maxDuration": 3
+    },
+    "api/*": {
+      "memory": 256,
+      "maxDuration": 5
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/analytics/aggregate",
+      "schedule": "0 0 * * *"
+    }
+  ],
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "github": {
+    "silent": true,
+    "autoJobCancelation": true
+  },
+  "images": {
+    "sizes": [640, 750, 828, 1080, 1200, 1920],
+    "domains": ["openevidence.org"],
+    "minimumCacheTTL": 60
+  }
 } 
