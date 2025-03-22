@@ -53,7 +53,7 @@ export async function getAdContentFromMappingWithGuardrails(
   // Apply the guardrails
   return applyGuardrails(
     adContentResponse, 
-    mappingResult.originalQuestion
+    mappingResult.originalQuestionText
   );
 }
 

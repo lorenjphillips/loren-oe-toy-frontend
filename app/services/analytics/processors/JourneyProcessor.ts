@@ -10,7 +10,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   AnalyticsEvent, 
   AnalyticsEventCategory, 
-  createAnalyticsEvent 
+  createAnalyticsEvent,
+  EventSource
 } from '../../../models/analytics/AnalyticsEvent';
 import {
   SessionActionType,
@@ -24,6 +25,23 @@ import {
   AggregateJourneyMetrics
 } from '../../../models/analytics/UserJourneyMetrics';
 import * as DataStore from '../dataStore';
+
+// Extend EventSource type with journey-specific properties
+interface JourneyEventSource extends Partial<EventSource> {
+  referrer?: string;
+  userAgent?: string;
+  sessionType?: string;
+  actionType?: SessionActionType;
+  pageType?: PageType;
+  reason?: string;
+  duration?: number;
+  pageCount?: number;
+  stepCount?: number;
+  questionId?: string;
+  action?: string;
+  feature?: string;
+  category?: string;
+}
 
 // Map to track active sessions
 const activeSessions = new Map<string, {
@@ -58,8 +76,9 @@ export function startSession(anonymous: boolean = true): string {
     {
       referrer: document.referrer || 'direct',
       userAgent: anonymous ? 'anonymous' : getUserAgentCategory(),
-      sessionType: 'web'
-    },
+      sessionType: 'web',
+      page: 'session_manager' // Required by EventSource type
+    } as JourneyEventSource,
     {
       sessionId,
       timestamp: startTime,
@@ -113,8 +132,9 @@ export function trackSessionStep(
     AnalyticsEventCategory.JOURNEY,
     {
       actionType,
-      pageType
-    },
+      pageType,
+      page: pageId // Required by EventSource type
+    } as JourneyEventSource,
     {
       sessionId,
       timestamp,
@@ -189,8 +209,9 @@ export function endSession(sessionId: string, reason: string = 'manual'): void {
       reason,
       duration,
       pageCount,
-      stepCount: session.steps.length
-    },
+      stepCount: session.steps.length,
+      page: 'session_manager' // Required by EventSource type
+    } as JourneyEventSource,
     journeyData
   ) as SessionEndEvent;
   
@@ -244,8 +265,9 @@ function trackQuestionFlow(sessionId: string, step: SessionStep): void {
     AnalyticsEventCategory.JOURNEY,
     {
       questionId,
-      action: step.actionType
-    },
+      action: step.actionType,
+      page: 'question_flow' // Required by EventSource type
+    } as JourneyEventSource,
     {
       sessionId,
       questionId,
@@ -293,8 +315,9 @@ export function trackFeatureUsage(
     {
       feature: featureName,
       category: featureCategory,
-      action
-    },
+      action,
+      page: 'feature_usage' // Required by EventSource type
+    } as JourneyEventSource,
     {
       sessionId,
       timestamp,
@@ -317,11 +340,12 @@ export function autoTimeoutSessions(inactiveMinutes: number = 30): void {
   const timeoutThreshold = now - (inactiveMinutes * 60 * 1000);
   
   // Check each active session
-  for (const [sessionId, session] of activeSessions.entries()) {
+  // Use Array.from to convert Map entries iterator to a standard array to avoid downlevelIteration issues
+  Array.from(activeSessions.entries()).forEach(([sessionId, session]) => {
     if (session.lastActivity < timeoutThreshold) {
       endSession(sessionId, 'timeout');
     }
-  }
+  });
 }
 
 /**

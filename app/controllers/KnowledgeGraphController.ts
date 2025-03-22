@@ -1,8 +1,22 @@
 import { Ad } from '../types/ad';
 import { MedicalClassification } from '../services/classification';
-import { graphGenerator } from '../services/graphGenerator';
-import analyticsService from '../services/analytics';
-import { medicalConceptsService } from '../services/medicalConcepts';
+import * as graphGenerator from '../services/graphGenerator';
+import { configureAnalytics, createEvent } from '../services/analytics';
+import { AnalyticsEventType } from '../services/analytics';
+import * as medicalConceptsService from '../services/medicalConcepts';
+import { 
+  KnowledgeGraph, 
+  Node, 
+  NodeType as ModelNodeType, 
+  Relationship,
+  MedicalConceptNode,
+  TreatmentNode
+} from '../models/knowledgeGraph';
+import { AnalyticsEventCategory } from '../models/analytics/AnalyticsEvent';
+import { v4 as uuidv4 } from 'uuid';
+
+// Initialize analytics
+configureAnalytics({ debugMode: true });
 
 /**
  * Graph node types
@@ -84,6 +98,12 @@ export interface KnowledgeGraphResponse {
   errorMessage?: string;
 }
 
+interface GraphGenerationResult {
+  id: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
 /**
  * Controller for handling knowledge graph ad experiences
  */
@@ -97,6 +117,8 @@ class KnowledgeGraphController {
     adData?: Ad,
     config?: Partial<KnowledgeGraphConfig>
   ): Promise<KnowledgeGraphResponse> {
+    const startTime = Date.now();
+    
     try {
       // 1. Extract medical concepts from the question
       const concepts = await this.extractRelevantConcepts(question, classification);
@@ -115,7 +137,7 @@ class KnowledgeGraphController {
       // 4. Enhance the graph with advertiser information if available
       const enhancedGraph = adData 
         ? await this.enhanceGraphWithAdvertiserData(nodes, edges, adData, centralNode)
-        : { nodes, edges };
+        : { nodes, edges, id: uuidv4() }; // Add an id to the graph
       
       // 5. Prepare final configuration
       const finalConfig: KnowledgeGraphConfig = {
@@ -129,12 +151,18 @@ class KnowledgeGraphController {
       };
       
       // 6. Log for analytics
-      analyticsService.trackGraphGeneration({
-        questionId: question.slice(0, 20).replace(/\s+/g, '_'),
-        graphSize: enhancedGraph.nodes.length,
-        concepts: concepts.slice(0, 5),
-        advertiserIncluded: !!adData,
-      });
+      const analyticsEvent = createEvent(
+        AnalyticsEventType.KNOWLEDGE_NODE_EXPLORE,
+        {
+          metadata: {
+            graphId: enhancedGraph.id,
+            conceptCount: concepts.length,
+            nodeCount: enhancedGraph.nodes.length,
+            edgeCount: enhancedGraph.edges.length,
+            generationTimeMs: Date.now() - startTime
+          }
+        }
+      );
       
       // 7. Return the complete response
       return {
@@ -170,11 +198,14 @@ class KnowledgeGraphController {
   ): Promise<string[]> {
     try {
       // Use medicalConcepts service to extract structured concepts
-      const extractedConcepts = await medicalConceptsService.extractConcepts(question);
+      const extractedConcepts = await medicalConceptsService.searchMedicalConcepts({
+        query: question,
+        limit: 10
+      });
       
       // Combine with classification data
       const allConcepts = new Set([
-        ...extractedConcepts.map(c => c.term),
+        ...extractedConcepts.concepts.map((c: MedicalConceptNode | TreatmentNode) => c.label),
         ...(classification.categories || []),
       ]);
       
@@ -260,23 +291,91 @@ class KnowledgeGraphController {
     edges: GraphEdge[];
     centralNode: GraphNode;
   }> {
+    // Create a mock classification object if needed for graph generator
+    const mockClassification: MedicalClassification = {
+      primaryCategory: { id: "general", name: "General Medical", confidence: 0.9 },
+      subcategory: { id: "general_inquiry", name: "General Medical Inquiry", confidence: 0.8 },
+      categories: concepts,
+      keywords: concepts
+    };
+    
     // Use the graph generator service to create the initial graph
-    const graphData = await graphGenerator.generateGraph({
-      concepts,
-      focusAreas,
-      maxNodes: config?.maxNodes || 20,
-      includeSecondaryConnections: config?.includeSecondaryConnections ?? true,
-    });
+    const graphData = await graphGenerator.generateKnowledgeGraph(
+      concepts.join(" "),
+      mockClassification,
+      {
+        maxNodes: 20,
+        includeRelatedConcepts: true
+      }
+    );
+    
+    // Convert the knowledge graph model to our GraphNode/GraphEdge format
+    const nodes: GraphNode[] = graphData.nodes.map(node => ({
+      id: node.id,
+      type: this.mapNodeType(node.type),
+      label: node.label,
+      description: node.description,
+      properties: {
+        relevanceScore: node.relevanceScore,
+        ...('pharmaAffiliations' in node ? { pharmaAffiliations: node.pharmaAffiliations } : {})
+      }
+    }));
+    
+    // Create edges from relationships
+    const edges: GraphEdge[] = graphData.relationships.map(rel => ({
+      id: rel.id,
+      source: rel.source,
+      target: rel.target,
+      type: this.mapRelationshipType(rel.type),
+      label: rel.type.toLowerCase().replace('_', ' '),
+      properties: {
+        description: rel.description,
+        evidenceStrength: rel.evidenceStrength,
+        weight: rel.weight
+      }
+    }));
     
     // Set the central node (main topic of the graph)
-    const centralNode = graphData.nodes[0];
-    centralNode.size = 1.5; // Make it bigger
+    const centralNode = nodes[0];
+    if (centralNode) {
+      centralNode.size = 1.5; // Make it bigger
+    }
     
     return {
-      nodes: graphData.nodes,
-      edges: graphData.edges,
+      nodes,
+      edges,
       centralNode,
     };
+  }
+  
+  /**
+   * Map model node types to graph node types
+   */
+  private mapNodeType(modelType: ModelNodeType): GraphNodeType {
+    const mapping: Record<ModelNodeType, GraphNodeType> = {
+      [ModelNodeType.MEDICAL_CONCEPT]: GraphNodeType.MECHANISM,
+      [ModelNodeType.TREATMENT]: GraphNodeType.TREATMENT,
+      [ModelNodeType.SYMPTOM]: GraphNodeType.SYMPTOM,
+      [ModelNodeType.CONDITION]: GraphNodeType.CONDITION,
+      [ModelNodeType.DRUG]: GraphNodeType.DRUG,
+      [ModelNodeType.BIOMARKER]: GraphNodeType.OUTCOME
+    };
+    
+    return mapping[modelType] || GraphNodeType.MECHANISM;
+  }
+  
+  /**
+   * Map relationship types to edge types
+   */
+  private mapRelationshipType(relType: string): GraphEdgeType {
+    switch(relType) {
+      case 'TREATS': return GraphEdgeType.TREATS;
+      case 'CAUSES': return GraphEdgeType.CAUSES;
+      case 'INDICATES': return GraphEdgeType.INDICATES;
+      case 'INTERACTS_WITH': return GraphEdgeType.INTERACTS;
+      case 'BELONGS_TO': return GraphEdgeType.BELONGS_TO;
+      default: return GraphEdgeType.INDICATES;
+    }
   }
   
   /**
@@ -290,6 +389,7 @@ class KnowledgeGraphController {
   ): Promise<{
     nodes: GraphNode[];
     edges: GraphEdge[];
+    id: string; // Add id to the result
   }> {
     // Create a node for the advertised treatment
     const adNodeId = `ad_${adData.id}`;
@@ -334,10 +434,11 @@ class KnowledgeGraphController {
       thickness: 1,
     };
     
-    // Combine everything
+    // Combine everything with a generated id
     return {
       nodes: [...nodes, adNode, companyNode],
       edges: [...edges, treatsEdge, belongsToEdge],
+      id: uuidv4(), // Generate an ID for the graph
     };
   }
   
@@ -352,12 +453,7 @@ class KnowledgeGraphController {
   ): Promise<any> {
     try {
       // Track the interaction
-      analyticsService.trackGraphInteraction({
-        interactionType,
-        nodeId,
-        edgeId,
-        timestamp: new Date().toISOString(),
-      });
+      trackGraphInteraction(nodeId || null, edgeId || null, interactionType);
       
       // Handle different interaction types
       switch (interactionType) {
@@ -467,4 +563,28 @@ class KnowledgeGraphController {
 
 // Export singleton instance
 const knowledgeGraphController = new KnowledgeGraphController();
-export default knowledgeGraphController; 
+export default knowledgeGraphController;
+
+/**
+ * Track user interactions with the knowledge graph
+ */
+function trackGraphInteraction(nodeId: string | null, edgeId: string | null, interactionType: string): void {
+  try {
+    const event = createEvent(
+      AnalyticsEventType.KNOWLEDGE_NODE_EXPLORE,
+      {
+        metadata: {
+          nodeId,
+          edgeId,
+          interactionType,
+          timestamp: Date.now()
+        }
+      }
+    );
+    
+    // In a real implementation, dispatch event to analytics service
+    console.log('Graph interaction tracked:', event);
+  } catch (error) {
+    console.error('Error tracking graph interaction:', error);
+  }
+} 

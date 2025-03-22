@@ -16,11 +16,12 @@ import {
   hideTooltip,
   formatLargeNumber
 } from '../../services/d3Integration';
-import { DashboardTheme, getTheme } from '../../styles/dashboardTheme';
+import { DashboardTheme, ColorPalette, getTheme } from '../../styles/dashboardTheme';
 
 // Temporary type definitions for d3-sankey until the package is installed
 // Remove these definitions after installing the actual package
 interface SankeyNode extends d3.SimulationNodeDatum {
+  id: string;
   name: string;
   index?: number;
   x0?: number;
@@ -117,13 +118,6 @@ interface FlowNodeDatum {
   id: string;
 }
 
-// Update the ColorTheme interface to include categorical property
-interface ColorTheme {
-  visualizations?: {
-    categorical?: string[];
-  };
-}
-
 // InteractionFlowProps interface for component props
 export interface InteractionFlowProps {
   data: FlowData;
@@ -174,8 +168,11 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
     if (!containerRef.current || !data.nodes.length) return;
     
     // Preprocess data - create a new copy to avoid mutating the original
-    const processedNodes = [...data.nodes]
-      .map(node => ({ ...node }));
+    const processedNodes = data.nodes.map((node, index) => ({
+      ...node,
+      index,
+      name: node.name || node.id
+    }));
       
     const processedLinks = [...data.links]
       .map(link => ({ ...link }));
@@ -503,18 +500,19 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
           return originalNode.color;
         }
         
-        // Default colors from theme or fallback
-        const defaultColors = theme.visualizations?.categorical ||
-          ['#3366CC', '#DC3912', '#FF9900', '#109618', '#990099', '#0099C6', '#DD4477', '#66AA00'];
+        // Update theme default colors
+        const defaultColors = [
+          '#3366CC', '#DC3912', '#FF9900', '#109618', 
+          '#990099', '#0099C6', '#DD4477', '#66AA00'
+        ];
         
         // Determine color based on group if available, or use index
         if (originalNode.group) {
-          // Create a deterministic hash function for group names
           const hashCode = (str: string) => {
             let hash = 0;
             for (let i = 0; i < str.length; i++) {
               hash = ((hash << 5) - hash) + str.charCodeAt(i);
-              hash = hash & hash; // Convert to 32bit integer
+              hash = hash & hash;
             }
             return Math.abs(hash);
           };
@@ -527,9 +525,10 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
         return defaultColors[i % defaultColors.length];
       })
       .attr('stroke', theme.colors.border)
-      .attr('opacity', d => {
-        const originalNode = processedNodes[d.index || 0];
-        return selectedNode === null || selectedNode === originalNode.id ? 1 : 0.3;
+      .attr('opacity', (d: unknown) => {
+        const node = d as SankeyNode;
+        const originalNodeItem = processedNodes.find(n => n.index === node.index) || processedNodes[0];
+        return selectedNode === null || selectedNode === originalNodeItem.id ? 1 : 0.3;
       })
       .on('mouseover', (event, d: any) => {
         const nodeIndex = (d as FlowNodeDatum).index || 0;
@@ -624,8 +623,9 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
         
         // Update node appearance
         nodeGroups.selectAll('rect')
-          .attr('opacity', (node) => {
-            const originalNodeItem = processedNodes[node.index || 0];
+          .attr('opacity', (d: unknown) => {
+            const node = d as SankeyNode;
+            const originalNodeItem = processedNodes.find(n => n.index === node.index) || processedNodes[0];
             return selectedNode === null || selectedNode === originalNodeItem.id ? 1 : 0.3;
           });
           

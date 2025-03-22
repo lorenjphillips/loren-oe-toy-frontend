@@ -122,9 +122,11 @@ interface ExtendedTreatmentCategory {
   id: string;
   name: string;
   medicalCategoryName?: string;
+  medicalCategory: string;  // Required by TreatmentCategory
+  relevantSpecialties: string[];  // Required by TreatmentCategory
 }
 
-interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
+interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory' | 'creative'> {
   treatmentCategory: ExtendedTreatmentCategory;
   company: {
     id: string;
@@ -136,11 +138,14 @@ interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
     legalDisclaimer?: string;
   };
   creative?: {
-    headline?: string;
+    headline: string;  // Required in AdContent
+    bodyText: string;  // Required in AdContent
     subheadline?: string;
-    bodyText?: string;
     callToAction?: string;
     displaySettings?: Record<string, any>;
+    imageUrl?: string;  // Optional in both
+    thumbnailUrl?: string;  // Optional in both
+    videoUrl?: string;  // Optional in both
   };
 }
 

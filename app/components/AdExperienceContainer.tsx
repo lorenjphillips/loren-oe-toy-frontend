@@ -14,10 +14,12 @@ import dynamic from 'next/dynamic';
 import { v4 as uuidv4 } from 'uuid';
 
 // Import services
-import experienceManager, { 
+import { 
+  ExperienceManager,
   AdExperienceType,
   ExperienceContext,
-  ExperienceConfig
+  ExperienceConfig,
+  ExperienceResult
 } from '../services/experienceManager';
 import { classifyMedicalQuestion, MedicalClassification } from '../services/classification';
 import { contentTimingService } from '../services/contentTiming';
@@ -144,7 +146,7 @@ export default function AdExperienceContainer({
 }: AdExperienceContainerProps) {
   // State for experience type and configuration
   const [experienceType, setExperienceType] = useState<AdExperienceType>(AdExperienceType.STANDARD);
-  const [experienceConfig, setExperienceConfig] = useState<ExperienceConfig | null>(null);
+  const [experienceConfig, setExperienceConfig] = useState<ExperienceResult | null>(null);
   const [classification, setClassification] = useState<MedicalClassification | null>(null);
   
   // State for transitions
@@ -158,6 +160,9 @@ export default function AdExperienceContainer({
   const impressionId = useRef(uuidv4());
   const containerRef = useRef<HTMLDivElement>(null);
   const viewStartTime = useRef(Date.now());
+  
+  // Initialize the experience manager
+  const experienceManager = new ExperienceManager();
   
   // Select the appropriate experience when question or loading state changes
   useEffect(() => {
@@ -174,14 +179,13 @@ export default function AdExperienceContainer({
           question,
           classification: questionClassification,
           estimatedWaitTimeMs,
-          userPreferences: {
-            // Could be loaded from user settings
-            preferInteractive: true,
-            preferVisual: true,
-          },
           deviceCapabilities: {
-            isHighPerformance: true, // This should be determined dynamically
-            isMobile: false, // This should be determined dynamically
+            isHighPerformance: true, // This could be determined dynamically
+            isMobile: false, // This could be determined dynamically
+          },
+          userPreferences: {
+            preferInteractive: true,
+            preferVisual: true
           }
         };
         
@@ -199,7 +203,7 @@ export default function AdExperienceContainer({
           handleExperienceTransition(experienceType, selection.selectedType, context);
         } else {
           // Just update the config
-          setExperienceConfig(selection.config);
+          setExperienceConfig(selection);
         }
         
         // Log the selection for analytics
@@ -262,7 +266,7 @@ export default function AdExperienceContainer({
       
       // Get the configuration for the new experience
       experienceManager.transitionToExperience(currentType, newType, context)
-        .then(config => setExperienceConfig(config));
+        .then((config: ExperienceResult) => setExperienceConfig(config));
     }, 300); // Transition duration
   };
   
@@ -333,7 +337,7 @@ export default function AdExperienceContainer({
       adData,
       question,
       advertiserId,
-      config: experienceConfig?.settings,
+      config: experienceConfig?.config?.settings,
     };
     
     if (isTransitioning) {

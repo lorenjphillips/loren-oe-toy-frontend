@@ -6,6 +6,7 @@
  */
 
 import { AdContent, AdContentResponse, AdType } from '../../models/adTypes';
+import { GuardrailedAdContent, GuardrailedAdContentResponse } from '../../models/ethicalAITypes';
 import { getConfig } from './configuration';
 
 /**
@@ -85,6 +86,11 @@ export function getTransparencyInfo(
   const config = getConfig();
   const extendedAdContent = adContent as ExtendedAdContent;
   
+  // Convert citation objects to string array if needed
+  const citationStrings = (extendedAdContent.citations || []).map(
+    citation => citation.title || citation.url || ''
+  ).filter(text => text.length > 0);
+  
   return {
     selectionCriteria: {
       company: adContent.company.name,
@@ -93,7 +99,7 @@ export function getTransparencyInfo(
       isSponsored: true
     },
     disclaimers: adContent.disclaimers || [],
-    citations: extendedAdContent.citations || [],
+    citations: citationStrings,
     dataUsage: config.transparencyDisclosures.dataUsage,
     aboutAds: config.transparencyDisclosures.aboutAds
   };
@@ -179,7 +185,7 @@ export function validateCompliance(adContent: AdContent) {
 export function applyGuardrails(
   adContentResponse: AdContentResponse,
   questionContext?: string
-) {
+): GuardrailedAdContentResponse {
   const enhancedContent = adContentResponse.content.map(adContent => {
     const clinicalAccuracy = validateClinicalAccuracy(adContent);
     const compliance = validateCompliance(adContent);
@@ -190,8 +196,34 @@ export function applyGuardrails(
     );
     const separationIndicator = getSeparationIndicatorType(adContent);
     
+    // Ensure all required properties for GuardrailedAdContent exist
+    const creative = {
+      headline: adContent.creative?.headline || '',
+      bodyText: adContent.creative?.bodyText || '',
+      imageUrl: adContent.creative?.imageUrl,
+      videoUrl: adContent.creative?.videoUrl,
+      displaySettings: adContent.creative?.displaySettings
+    };
+    
     return {
       ...adContent,
+      // Ensure required properties are not undefined
+      id: adContent.id || '',
+      name: adContent.name || '',
+      title: adContent.title || '',
+      description: adContent.description || '',
+      campaignId: adContent.campaignId || '',
+      adType: adContent.adType || '',
+      type: adContent.type || '',
+      treatmentCategoryId: adContent.treatmentCategoryId || '',
+      keywords: adContent.keywords || [],
+      createdAt: adContent.createdAt || 0,
+      updatedAt: adContent.updatedAt || 0,
+      activeTo: adContent.activeTo || 0,
+      isActive: typeof adContent.isActive === 'boolean' ? adContent.isActive : false,
+      regulatoryApproved: typeof adContent.regulatoryApproved === 'boolean' ? adContent.regulatoryApproved : false,
+      disclaimers: adContent.disclaimers || [],
+      creative: creative,
       guardrails: {
         clinicalAccuracy,
         compliance,
@@ -199,12 +231,14 @@ export function applyGuardrails(
         separationIndicator,
         passedAllChecks: clinicalAccuracy.isValid && compliance.isCompliant
       }
-    };
+    } as GuardrailedAdContent;
   });
   
   return {
-    ...adContentResponse,
     content: enhancedContent,
+    totalFound: adContentResponse.totalFound || enhancedContent.length,
+    confidenceScore: adContentResponse.confidenceScore,
+    impressionId: adContentResponse.impressionId,
     guardrailsApplied: true
   };
 }

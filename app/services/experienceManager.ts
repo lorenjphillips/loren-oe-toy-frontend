@@ -25,6 +25,10 @@ export interface ExperienceContext {
     isHighPerformance: boolean;
     isMobile: boolean;
   };
+  userPreferences?: {
+    preferInteractive: boolean;
+    preferVisual: boolean;
+  };
 }
 
 /**
@@ -233,5 +237,24 @@ export class ExperienceManager {
     });
 
     return result;
+  }
+
+  /**
+   * Transition from one experience to another
+   * @param currentType The current experience type
+   * @param newType The new experience type to transition to
+   * @param context The context for the experience
+   * @returns A promise resolving to the new experience configuration
+   */
+  async transitionToExperience(
+    currentType: AdExperienceType, 
+    newType: AdExperienceType,
+    context: ExperienceContext
+  ): Promise<ExperienceResult> {
+    // Log the transition
+    console.log(`Transitioning from ${currentType} to ${newType}`);
+    
+    // Get the new experience configuration
+    return this.determineExperience(context.question, context);
   }
 }

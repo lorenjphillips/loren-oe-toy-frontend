@@ -75,6 +75,8 @@ interface ExtendedTreatmentCategory {
   id: string;
   name: string;
   medicalCategoryName?: string;
+  medicalCategory: string;  // Required by TreatmentCategory
+  relevantSpecialties: string[];  // Required by TreatmentCategory
 }
 
 interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
@@ -82,7 +84,7 @@ interface ExtendedAdContent extends Omit<AdContent, 'treatmentCategory'> {
 }
 
 export interface GenentechAdTemplateProps extends Omit<BaseAdTemplateProps, 'adContent'> {
-  adContent: AdContent;
+  adContent: ExtendedAdContent;  // Changed from AdContent to ExtendedAdContent
   showStats?: boolean;
   clinicalStats?: {
     title: string;

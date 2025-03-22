@@ -10,6 +10,9 @@ import InteractionControls from './InteractionControls';
 
 interface GraphEngineProps {
   knowledgeGraph: KnowledgeGraph;
+  filters?: KnowledgeGraphFilters;
+  onFiltersChange?: (filters: KnowledgeGraphFilters) => void;
+  onResetFilters?: () => void;
   initialFilters?: KnowledgeGraphFilters;
   width?: number;
   height?: number;
@@ -20,6 +23,9 @@ interface GraphEngineProps {
 
 export default function GraphEngine({
   knowledgeGraph,
+  filters = {},
+  onFiltersChange,
+  onResetFilters,
   initialFilters,
   width = 900,
   height = 600,
@@ -31,7 +37,7 @@ export default function GraphEngine({
   const [vizService] = useState<VisualizationService>(() => 
     new VisualizationService({ width, height }));
   const [graph, setGraph] = useState<D3Graph>({ nodes: [], links: [] });
-  const [filters, setFilters] = useState<KnowledgeGraphFilters>(initialFilters || {});
+  const [localFilters, setLocalFilters] = useState<KnowledgeGraphFilters>(filters || initialFilters || {});
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [transform, setTransform] = useState<d3.ZoomTransform>(d3.zoomIdentity);
@@ -40,9 +46,9 @@ export default function GraphEngine({
 
   // Initialize the graph with data and filters
   useEffect(() => {
-    const graphData = vizService.createGraphFromData(knowledgeGraph, filters);
+    const graphData = vizService.createGraphFromData(knowledgeGraph, localFilters);
     setGraph(graphData);
-  }, [knowledgeGraph, filters, vizService]);
+  }, [knowledgeGraph, localFilters, vizService]);
 
   // Set up D3 simulation when graph changes
   useEffect(() => {
@@ -358,10 +364,11 @@ export default function GraphEngine({
 
   // Handle filter changes
   const updateFilters = (newFilters: Partial<KnowledgeGraphFilters>) => {
-    setFilters(prevFilters => ({
+    setLocalFilters(prevFilters => ({
       ...prevFilters,
       ...newFilters
     }));
+    onFiltersChange?.(localFilters);
   };
 
   // Helper functions to find nodes and links by ID with proper type safety
@@ -404,9 +411,10 @@ export default function GraphEngine({
           const zoom = d3.zoom<SVGSVGElement, unknown>().on('zoom', null);
           svg.transition().call(zoom.transform, d3.zoomIdentity);
           setTransform(d3.zoomIdentity);
+          onResetFilters?.();
         }}
         onFilter={updateFilters}
-        filters={filters}
+        filters={localFilters}
         hoveredNode={findNodeById(hoveredNode)}
         hoveredEdge={findLinkById(hoveredEdge)}
         selectedNode={findNodeById(selectedNode)}

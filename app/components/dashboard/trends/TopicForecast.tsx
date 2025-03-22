@@ -62,13 +62,18 @@ interface TopicForecast {
   growthDrivers?: string[];
 }
 
+// Add type for dashboard context
+interface DashboardContextType {
+  dateRange: [Date, Date];
+}
+
 export default function TopicForecast({
   forecastPeriod = '3m',
   maxTopics = 10,
   significanceThreshold = 0.6,
   height = 400
 }: TopicForecastProps) {
-  const dashboardContext = useContext(DashboardContext);
+  const dashboardContext = useContext<DashboardContextType>(DashboardContext);
   const [loading, setLoading] = useState(true);
   const [forecasts, setForecasts] = useState<TopicForecast[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +143,7 @@ export default function TopicForecast({
             if (Math.random() < probability) {
               question.medicalConcepts.push({
                 term: topic.term,
-                category: topic.category,
+                category: topic.category as 'disease' | 'symptom' | 'treatment' | 'drug' | 'procedure',
                 confidence: 0.85 + Math.random() * 0.15
               });
             }
@@ -438,7 +443,7 @@ export default function TopicForecast({
                   <TableCell>
                     <Typography variant="caption" sx={{ display: 'block' }}>
                       {forecast.growthDrivers?.slice(0, 2).join(', ') || 'No drivers available'}
-                      {forecast.growthDrivers?.length > 2 && '...'}
+                      {forecast.growthDrivers && forecast.growthDrivers.length > 2 && '...'}
                     </Typography>
                   </TableCell>
                 </TableRow>
