@@ -92,7 +92,7 @@ export default function CategoryBreakdown({
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, companyId, dashboardContext.selectedCompany, dashboardContext.filters]);
+  }, [dashboardContext.dateRange, companyId, dashboardContext.selectedCompany, dashboardContext.filters, dashboardContext]);
   
   // Render bar chart using D3
   useEffect(() => {

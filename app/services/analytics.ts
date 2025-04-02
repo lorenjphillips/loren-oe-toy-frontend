@@ -948,7 +948,7 @@ export function initAdPerformanceMeasurement(adId: string): number {
 }
 
 // Export all functions
-export default {
+const AnalyticsService = {
   trackImpressionStart,
   trackImpressionEnd,
   trackVisibilityChange,
@@ -978,4 +978,6 @@ export default {
   trackFormatEngagement,
   trackFormatCompletion,
   trackFormatQuestionCorrelation
-}; 
+};
+
+export default AnalyticsService; 

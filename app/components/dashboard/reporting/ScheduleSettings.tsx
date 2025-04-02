@@ -40,12 +40,17 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({
         ? currentSchedule.startDate.toISOString().split('T')[0]
         : new Date(currentSchedule.startDate).toISOString().split('T')[0];
       
-      setCurrentSchedule((prev) => ({
-        ...prev,
-        startDate: new Date(formattedStartDate),
-      }));
+      // Ensure we only update if the formatted date differs from what might already be set
+      if (currentSchedule.startDate.toISOString().split('T')[0] !== formattedStartDate) {
+        setCurrentSchedule((prev) => ({
+          ...prev,
+          // Store as Date object internally
+          startDate: new Date(formattedStartDate), 
+        }));
+      }
     }
-  }, []);
+    // This effect should re-run if the initial startDate value changes.
+  }, [currentSchedule.startDate]);
 
   const handleFrequencyChange = (frequency: ReportScheduleFrequency) => {
     const updatedSchedule = { ...currentSchedule, frequency };

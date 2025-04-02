@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   Box, 
   Paper, 
@@ -161,129 +161,38 @@ export default function AdExperienceContainer({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewStartTime = useRef(Date.now());
   
-  // Initialize the experience manager
-  const experienceManager = new ExperienceManager();
-  
-  // Select the appropriate experience when question or loading state changes
-  useEffect(() => {
-    const selectAppropriateExperience = async () => {
-      if (!question) return;
-      
-      try {
-        // First, classify the question
-        const questionClassification = await classifyMedicalQuestion(question);
-        setClassification(questionClassification);
-        
-        // Create experience context
-        const context: ExperienceContext = {
-          question,
-          classification: questionClassification,
-          estimatedWaitTimeMs,
-          deviceCapabilities: {
-            isHighPerformance: true, // This could be determined dynamically
-            isMobile: false, // This could be determined dynamically
-          },
-          userPreferences: {
-            preferInteractive: true,
-            preferVisual: true
-          }
-        };
-        
-        // If we're A/B testing, override the selection logic
-        if (testVariant) {
-          handleTestVariant(testVariant, context);
-          return;
-        }
-        
-        // Get experience selection from manager
-        const selection = await experienceManager.selectExperience(context);
-        
-        // If we're changing experience types, handle the transition
-        if (experienceType !== selection.selectedType) {
-          handleExperienceTransition(experienceType, selection.selectedType, context);
-        } else {
-          // Just update the config
-          setExperienceConfig(selection);
-        }
-        
-        // Log the selection for analytics
-        // @ts-ignore - Temporarily suppressing TypeScript errors
-        analyticsService.trackEvent(
-          'ad_experience_selected',
-          'user_interaction',
-          {
-            experienceType: selection.selectedType,
-            question,
-            reasoning: selection.reasoning,
-            config: selection.config,
-          }
-        );
-        
-        // Load the appropriate controller
-        const experienceController = await loadController(selection.selectedType);
-        setController(experienceController);
-        
-      } catch (error) {
-        console.error('Error selecting experience:', error);
-        // Fall back to standard experience
-        setExperienceType(AdExperienceType.STANDARD);
-      }
-    };
-    
-    selectAppropriateExperience();
-    
-    // Track impression
-    return () => {
-      if (onAdImpression) {
-        const viewTime = Date.now() - viewStartTime.current;
-        onAdImpression({
-          impressionId: impressionId.current,
-          experienceType,
-          viewTimeMs: viewTime,
-          adId: adData?.id,
-        });
-      }
-    };
-  }, [question, isLoading, estimatedWaitTimeMs, testVariant]);
-  
-  // Handle experience transitions
-  const handleExperienceTransition = async (
-    currentType: AdExperienceType, 
+  // Memoized handlers
+  const handleExperienceTransition = useCallback(async (
+    currentType: AdExperienceType,
     newType: AdExperienceType,
     context: ExperienceContext
   ) => {
-    // Only transition if the types are different
     if (currentType === newType) return;
-    
-    // Set transitioning state
     setIsTransitioning(true);
     setPreviousType(currentType);
-    
-    // After a short delay, change the experience type
+    // @ts-ignore window property access
+    const expManager = window.OpusExperienceManager;
+
     setTimeout(() => {
       setExperienceType(newType);
       setIsTransitioning(false);
-      
-      // Get the configuration for the new experience
-      experienceManager.transitionToExperience(currentType, newType, context)
+      expManager.transitionToExperience(currentType, newType, context)
         .then((config: ExperienceResult) => setExperienceConfig(config));
-    }, 300); // Transition duration
-  };
-  
-  // Handle A/B test variants
-  const handleTestVariant = (variant: string, context: ExperienceContext) => {
+    }, 300);
+  }, [setExperienceType, setIsTransitioning, setPreviousType]); // Dependencies for useCallback
+
+  const handleTestVariant = useCallback((variant: string, context: ExperienceContext) => {
     const options = {
       'microsim': AdExperienceType.MICROSIMULATION,
       'knowledge': AdExperienceType.KNOWLEDGE_GRAPH,
       'evidence': AdExperienceType.EVIDENCE_CARD,
       'standard': AdExperienceType.STANDARD,
     };
-    
     const selectedType = options[variant as keyof typeof options] || AdExperienceType.STANDARD;
-    
-    // Log the test variant
-    // @ts-ignore - Temporarily suppressing TypeScript errors
-    analyticsService.trackEvent(
+    // @ts-ignore window property access
+    const analyticsSvc = window.OpusAnalytica;
+
+    analyticsSvc.trackEvent(
       'ab_test_impression',
       'analytics',
       {
@@ -291,16 +200,94 @@ export default function AdExperienceContainer({
         context: {
           question: context.question,
           classification: context.classification,
-          // @ts-ignore - Fix property name
-          experienceType: context.experienceType
+          experienceType: context.experienceType // Use optional property
         }
       }
     );
-    
+
     if (experienceType !== selectedType) {
-      handleExperienceTransition(experienceType, selectedType, context);
+      // Pass context without experienceType initially, it gets added during transition
+      const transitionContext = { ...context }; 
+      delete transitionContext.experienceType;
+      handleExperienceTransition(experienceType, selectedType, transitionContext);
     }
-  };
+  }, [experienceType, handleExperienceTransition]); // Dependencies for useCallback
+
+  // Initialize the experience manager (Assuming this should be stable)
+  // Consider if this needs to be state or a ref if it can change
+  // const experienceManager = new ExperienceManager(); 
+  // Using window object for now as per original effect
+
+  // Select the appropriate experience when question or loading state changes
+  useEffect(() => {
+    // @ts-ignore - Temporarily suppressing TypeScript errors
+    const analyticsService = window.OpusAnalytica;
+    // @ts-ignore - Temporarily suppressing TypeScript errors
+    const experienceManager = window.OpusExperienceManager; 
+
+    const selectAppropriateExperience = async () => {
+      if (isLoading || !question) return;
+      try {
+        const classification = await experienceManager.classifyQuery(question);
+        const context: ExperienceContext = {
+          question,
+          classification,
+          experienceType, // Pass current type
+        };
+
+        if (testVariant) {
+          handleTestVariant(testVariant, context);
+          return;
+        }
+
+        const selectedExperience = await experienceManager.selectExperience(context);
+        if (selectedExperience && experienceType !== selectedExperience.type) {
+          handleExperienceTransition(experienceType, selectedExperience.type, context);
+        } else {
+          const config = await experienceManager.getExperienceConfig(experienceType, context);
+          setExperienceConfig(config);
+        }
+      } catch (error) {
+        console.error('Error selecting experience:', error);
+      }
+    };
+
+    impressionId.current = uuidv4();
+    viewStartTime.current = Date.now();
+    const currentImpressionId = impressionId.current;
+    const currentViewStartTime = viewStartTime.current;
+
+    selectAppropriateExperience();
+
+    return () => {
+      if (onAdImpression) {
+        const viewTime = Date.now() - currentViewStartTime;
+        onAdImpression({
+          impressionId: currentImpressionId,
+          experienceType,
+          viewTimeMs: viewTime,
+          adId: adData?.id,
+        });
+      }
+    };
+  }, [
+    question,
+    isLoading,
+    // estimatedWaitTimeMs, // Removed, not used
+    testVariant,
+    adData?.id,
+    // experienceManager, // Removed, defined inside effect
+    experienceType,
+    handleExperienceTransition, // Now stable due to useCallback
+    handleTestVariant, // Now stable due to useCallback
+    onAdImpression
+  ]);
+  
+  // Handle experience transitions (Moved before useEffect)
+  // const handleExperienceTransition = ... (Now declared above with useCallback)
+  
+  // Handle A/B test variants (Moved before useEffect)
+  // const handleTestVariant = ... (Now declared above with useCallback)
   
   // Handle ad click
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {

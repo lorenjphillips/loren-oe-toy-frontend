@@ -277,7 +277,7 @@ export function clearEvents(): void {
 }
 
 // Export all functions and initialize store
-export default {
+const analyticsStore = {
   initStore,
   configureStore,
   addEvent,
@@ -285,4 +285,6 @@ export default {
   getEventQueue,
   clearEvents,
   cleanupStore
-}; 
+};
+
+export default analyticsStore; 

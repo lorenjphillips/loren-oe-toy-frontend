@@ -166,8 +166,10 @@ export function NodeTypeLegend({ types, className = '' }: NodeTypeLegendProps) {
   );
 }
 
-export default {
+const NodeTypes = {
   NodeTypeIcon,
   NodeTypeBadge,
   NodeTypeLegend
-}; 
+};
+
+export default NodeTypes; 

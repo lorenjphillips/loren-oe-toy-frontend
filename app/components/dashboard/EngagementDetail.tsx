@@ -174,7 +174,7 @@ export default function EngagementDetail({
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, engagementFilter, companyId, category, dashboardContext.selectedCompany, dashboardContext.filters]);
+  }, [dashboardContext.dateRange, engagementFilter, companyId, category, dashboardContext.selectedCompany, dashboardContext.filters, dashboardContext]);
   
   // Render Sankey diagram for engagement flow
   useEffect(() => {

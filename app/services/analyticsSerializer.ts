@@ -358,7 +358,7 @@ export function prepareForStorage(
 }
 
 // Export the serializer functions
-export default {
+const AnalyticsSerializerService = {
   serializeEvent,
   anonymizeEvent,
   ensureHIPAACompliance,
@@ -367,4 +367,6 @@ export default {
   configureSerializer,
   prepareForStorage,
   createHIPAACompliantBatch
-}; 
+};
+
+export default AnalyticsSerializerService; 

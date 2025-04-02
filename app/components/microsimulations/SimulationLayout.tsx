@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { useState, useEffect, ReactNode, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -96,21 +96,21 @@ export const SimulationLayout: React.FC<SimulationLayoutProps> = ({
   // Calculate content area width based on sidebar visibility
   const contentWidth = sidebarOpen && !isMobile ? 'calc(100% - 320px)' : '100%';
 
+  // Handle view change (Moved before useEffect)
+  const handleViewChange = useCallback((newView: SimulationLayoutView) => {
+    setView(newView);
+    if (onViewChange) {
+      onViewChange(newView);
+    }
+  }, [onViewChange]);
+
   // Effect to handle view changes based on screen size
   useEffect(() => {
     if (isMobile && view !== 'compact') {
       handleViewChange('compact');
       setSidebarOpen(false);
     }
-  }, [isMobile, view]);
-
-  // Handle view change
-  const handleViewChange = (newView: SimulationLayoutView) => {
-    setView(newView);
-    if (onViewChange) {
-      onViewChange(newView);
-    }
-  };
+  }, [isMobile, view, handleViewChange]);
 
   // Toggle sidebar visibility
   const toggleSidebar = () => {

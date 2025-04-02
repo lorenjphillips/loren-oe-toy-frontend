@@ -111,7 +111,7 @@ export default function ROICalculator({ companyId }: ROICalculatorProps) {
         }
       ]);
     }
-  }, []);
+  }, [initiatives.length]);
   
   const handleAddInitiative = () => {
     if (!newInitiativeName) return;

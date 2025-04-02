@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DecisionNode as DecisionNodeType } from '../../../services/decisionTreeService';
 
 // Component props
@@ -33,9 +33,17 @@ const DecisionNode: React.FC<DecisionNodeProps> = ({
   const [timeRemaining, setTimeRemaining] = useState(timeConstraint || 0);
   const [isTimerActive, setIsTimerActive] = useState(!!timeConstraint);
   
-  // Handle timer countdown if time constraint is provided
+  // Handle submission of decision (Moved before useEffect)
+  const handleSubmit = useCallback(() => {
+    if (selectedOption && !isSubmitting) {
+      setIsSubmitting(true);
+      onDecision(selectedOption);
+    }
+  }, [selectedOption, isSubmitting, onDecision]);
+  
+  // Timer logic
   useEffect(() => {
-    if (!timeConstraint || !isTimerActive) return;
+    if (!timeConstraint || !isTimerActive) return undefined;
     
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
@@ -53,7 +61,7 @@ const DecisionNode: React.FC<DecisionNodeProps> = ({
     }, 1000);
     
     return () => clearInterval(timer);
-  }, [timeConstraint, isTimerActive, selectedOption]);
+  }, [timeConstraint, isTimerActive, selectedOption, handleSubmit]);
   
   // Format time remaining as MM:SS
   const formatTime = (seconds: number): string => {
@@ -65,14 +73,6 @@ const DecisionNode: React.FC<DecisionNodeProps> = ({
   // Handle option selection
   const handleOptionSelect = (optionId: string) => {
     setSelectedOption(optionId);
-  };
-  
-  // Handle submission of decision
-  const handleSubmit = () => {
-    if (selectedOption && !isSubmitting) {
-      setIsSubmitting(true);
-      onDecision(selectedOption);
-    }
   };
   
   // Determine the decision type icon/title

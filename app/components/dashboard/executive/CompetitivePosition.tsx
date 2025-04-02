@@ -321,7 +321,7 @@ export default function CompetitivePosition({ companyId }: CompetitivePositionPr
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, dashboardContext.filters]);
+  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, dashboardContext.filters, dashboardContext]);
   
   // Get unique categories
   const categories = executiveSummary

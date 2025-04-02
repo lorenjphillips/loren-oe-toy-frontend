@@ -7,7 +7,8 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { EducationalNode as EducationalNodeType } from '../../../services/decisionTreeService';
 
 // Component props
@@ -251,11 +252,14 @@ const EducationalNode: React.FC<EducationalNodeProps> = ({ node, onComplete }) =
       
       {/* Image if available */}
       {node.image && (
-        <div className="mb-6">
-          <img 
+        <div className="mb-6 text-center">
+          <Image 
             src={node.image} 
             alt={`Image for ${node.title}`} 
-            className="rounded-lg shadow-md max-h-80 mx-auto"
+            width={500}
+            height={320}
+            className="rounded-lg shadow-md inline-block"
+            style={{ objectFit: 'contain' }}
           />
         </div>
       )}

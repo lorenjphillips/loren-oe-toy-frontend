@@ -8,6 +8,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { OutcomeNode as OutcomeNodeType } from '../../../services/decisionTreeService';
 
 // Component props
@@ -137,11 +138,14 @@ const OutcomeNode: React.FC<OutcomeNodeProps> = ({ node, onContinue }) => {
       
       {/* Image if available */}
       {node.image && (
-        <div className="mb-6">
-          <img 
+        <div className="mb-6 text-center">
+          <Image 
             src={node.image} 
             alt={`Image for ${node.title}`} 
-            className="rounded-lg shadow-md max-h-80 mx-auto"
+            width={500}
+            height={320}
+            className="rounded-lg shadow-md inline-block"
+            style={{ objectFit: 'contain' }}
           />
         </div>
       )}

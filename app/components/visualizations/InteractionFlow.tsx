@@ -760,7 +760,9 @@ const InteractionFlow: React.FC<InteractionFlowProps> = ({
     onReset,
     showControls,
     selectedNode,
-    selectedLink
+    selectedLink,
+    title,
+    subtitle
   ]);
   
   // Helper function to truncate text

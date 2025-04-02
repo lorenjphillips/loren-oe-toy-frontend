@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Container, TextField, Button, Typography, Paper, List, Box, AppBar, Toolbar, Switch, FormControlLabel, Collapse, Alert, Divider } from '@mui/material';
 import { styled } from '@mui/system';
@@ -240,9 +240,9 @@ export default function Home() {
   };
 
   // Toggle admin panel
-  const toggleAdminPanel = () => {
-    setShowAdmin(!showAdmin);
-  };
+  const toggleAdminPanel = useCallback(() => {
+    setShowAdmin(prev => !prev);
+  }, []);
 
   // Toggle ad system
   const handleAdSystemToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -292,7 +292,7 @@ export default function Home() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showAdmin]);
+  }, [toggleAdminPanel]);
 
   return (
     <>

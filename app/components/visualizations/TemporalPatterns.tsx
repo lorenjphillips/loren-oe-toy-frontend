@@ -854,7 +854,9 @@ const TemporalPatterns: React.FC<TemporalPatternsProps> = ({
     anomalyDetection,
     anomalyThreshold,
     selectedSeries,
-    hoveredPoint
+    hoveredPoint,
+    title,
+    subtitle
   ]);
   
   // Helper function to apply time range filter

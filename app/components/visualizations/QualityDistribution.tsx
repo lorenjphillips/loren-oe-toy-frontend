@@ -651,7 +651,9 @@ const QualityDistribution: React.FC<QualityDistributionProps> = ({
     onCategoryClick, 
     xAxisLabel, 
     yAxisLabel,
-    selectedCategory
+    selectedCategory,
+    title,
+    subtitle
   ]);
   
   // Kernel density estimation function

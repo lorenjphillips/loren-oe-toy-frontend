@@ -4,7 +4,7 @@
  * Visualization of growth opportunities for pharma company decision makers.
  * Provides a visual mapping of opportunity areas by category, value, and effort.
  */
-import React, { useContext, useEffect, useState, useRef } from 'react';
+import React, { useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { 
   Box,
   Card,
@@ -92,26 +92,7 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId]);
-  
-  useEffect(() => {
-    if (!loading && bubbleChartRef.current && tooltipRef.current) {
-      renderBubbleChart();
-    }
-  }, [loading, viewType, filterCategory, categoryOpportunities, marketOpportunities]);
-  
-  const handleViewTypeChange = (
-    event: React.MouseEvent<HTMLElement>,
-    newViewType: ViewType | null
-  ) => {
-    if (newViewType !== null) {
-      setViewType(newViewType);
-    }
-  };
-  
-  const handleCategoryFilterChange = (event: SelectChangeEvent) => {
-    setFilterCategory(event.target.value);
-  };
+  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, dashboardContext]);
   
   // Helper to generate colors
   const getCategoryColor = (category: string): string => {
@@ -132,7 +113,7 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
   };
   
   // Generate bubble chart data based on selected view
-  const generateBubbleData = (): BubbleDataPoint[] => {
+  const generateBubbleData = useCallback((): BubbleDataPoint[] => {
     switch (viewType) {
       case 'category':
         return categoryOpportunities
@@ -198,10 +179,10 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
       default:
         return [];
     }
-  };
+  }, [viewType, categoryOpportunities, filterCategory, marketOpportunities]);
   
   // Render D3 bubble chart
-  const renderBubbleChart = () => {
+  const renderBubbleChart = useCallback(() => {
     const bubbleData = generateBubbleData();
     if (!bubbleData.length || !bubbleChartRef.current) return;
     
@@ -211,14 +192,11 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
     
     const tooltip = d3.select(tooltipElement);
     
-    // Clear previous chart
     svg.selectAll('*').remove();
     
-    // Get dimensions
     const width = bubbleChartRef.current.clientWidth;
     const height = bubbleChartRef.current.clientHeight || 500;
     
-    // Create a force simulation
     const simulation = d3.forceSimulation(bubbleData as d3.SimulationNodeDatum[])
       .force('x', d3.forceX(width / 2).strength(0.05))
       .force('y', d3.forceY(height / 2).strength(0.05))
@@ -228,7 +206,6 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
       }).iterations(2))
       .force('charge', d3.forceManyBody().strength(-50));
     
-    // Create circles for each data point
     const circles = svg.selectAll('.bubble')
       .data(bubbleData)
       .enter()
@@ -264,7 +241,6 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
         tooltip.style('opacity', 0);
       });
     
-    // Add labels for larger bubbles
     const labels = svg.selectAll('.label')
       .data(bubbleData.filter(d => d.radius > 30))
       .enter()
@@ -277,16 +253,34 @@ export default function OpportunityMap({ companyId }: OpportunityMapProps) {
       .attr('pointer-events', 'none')
       .attr('dy', '0.35em');
     
-    // Update positions on simulation tick
     simulation.on('tick', () => {
       circles
         .attr('cx', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(width - d.radius, d.x)))
         .attr('cy', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(height - d.radius, d.y)));
-      
+        
       labels
         .attr('x', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(width - d.radius, d.x)))
         .attr('y', (d: BubbleDataPoint) => Math.max(d.radius, Math.min(height - d.radius, d.y)));
     });
+  }, [generateBubbleData]);
+  
+  useEffect(() => {
+    if (!loading && bubbleChartRef.current && tooltipRef.current) {
+      renderBubbleChart();
+    }
+  }, [loading, renderBubbleChart]);
+  
+  const handleViewTypeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newViewType: ViewType | null
+  ) => {
+    if (newViewType !== null) {
+      setViewType(newViewType);
+    }
+  };
+  
+  const handleCategoryFilterChange = (event: SelectChangeEvent) => {
+    setFilterCategory(event.target.value);
   };
   
   return (

@@ -29,6 +29,7 @@ export interface ExperienceContext {
     preferInteractive: boolean;
     preferVisual: boolean;
   };
+  experienceType?: AdExperienceType;
 }
 
 /**

@@ -423,7 +423,7 @@ export default function StrategicInsights({ companyId }: StrategicInsightsProps)
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, dashboardContext.filters]);
+  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, dashboardContext.filters, dashboardContext]);
   
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);

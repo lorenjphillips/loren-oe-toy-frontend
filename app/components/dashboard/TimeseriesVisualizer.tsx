@@ -95,7 +95,7 @@ export default function TimeseriesVisualizer({
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, metric, granularity, companyId, category, dashboardContext.selectedCompany, dashboardContext.filters]);
+  }, [dashboardContext.dateRange, metric, granularity, companyId, category, dashboardContext.selectedCompany, dashboardContext.filters, dashboardContext]);
   
   // Render chart using D3
   useEffect(() => {

@@ -343,4 +343,6 @@ export class DecisionTreeService {
   }
 }
 
-export default new DecisionTreeService(); 
+const decisionTreeService = new DecisionTreeService();
+
+export default decisionTreeService; 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Box, 
   Typography, 
@@ -51,33 +51,12 @@ export const TreatmentSelector: React.FC<TreatmentSelectorProps> = ({
 }) => {
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(initialSelectedId || null);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(!!initialSelectedId);
-  const [startTime] = useState<number>(Date.now());
+  const [startTime] = useState(Date.now());
   const [timeRemaining, setTimeRemaining] = useState<number | null>(timeLimit || null);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   
-  // Handle time limit countdown
-  useEffect(() => {
-    if (!timeLimit || isSubmitted) return;
-    
-    const timer = setInterval(() => {
-      const remaining = Math.max(0, timeLimit - Math.floor((Date.now() - startTime) / 1000));
-      setTimeRemaining(remaining);
-      
-      if (remaining === 0) {
-        clearInterval(timer);
-        handleSubmit(); // Auto-submit when time is up
-      }
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [timeLimit, isSubmitted, startTime]);
-  
-  const handleOptionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (isSubmitted) return;
-    setSelectedOptionId(event.target.value);
-  };
-  
-  const handleSubmit = () => {
+  // Memoize handleSubmit (Moved before useEffect)
+  const handleSubmit = useCallback(() => {
     if (!selectedOptionId || isSubmitted) return;
     
     const timeToDecide = Math.floor((Date.now() - startTime) / 1000);
@@ -92,7 +71,7 @@ export const TreatmentSelector: React.FC<TreatmentSelectorProps> = ({
     if (onSelectionAnalytics) {
       onSelectionAnalytics(selectedOptionId, timeToDecide, wasCorrect);
     }
-  };
+  }, [selectedOptionId, isSubmitted, startTime, options, onSelection, onSelectionAnalytics]);
   
   // Find the correct option for displaying feedback
   const correctOption = options.find(option => option.isCorrect);
@@ -102,6 +81,26 @@ export const TreatmentSelector: React.FC<TreatmentSelectorProps> = ({
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  useEffect(() => {
+    if (timeLimit && !isSubmitted) {
+      const timer = setInterval(() => {
+        const remaining = Math.max(0, Math.floor((timeLimit - (Date.now() - startTime) / 1000)));
+        setTimeRemaining(remaining);
+        if (remaining === 0) {
+          handleSubmit();
+        }
+      }, 100);
+
+      return () => clearInterval(timer);
+    }
+  }, [timeLimit, isSubmitted, startTime, handleSubmit]);
+  
+  // Re-added handleOptionChange
+  const handleOptionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isSubmitted) return;
+    setSelectedOptionId(event.target.value);
   };
   
   return (

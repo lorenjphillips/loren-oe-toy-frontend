@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { 
   Box, 
   Paper, 
@@ -207,7 +207,7 @@ export default function SmartAdDisplay({
   }, []);
 
   // Function to classify the question and find appropriate ads
-  const classifyAndGetAds = async (questionText: string) => {
+  const classifyAndGetAds = useCallback(async (questionText: string) => {
     if (!questionText || questionText.trim() === '') return;
     
     setIsClassifying(true);
@@ -344,10 +344,15 @@ export default function SmartAdDisplay({
         setIsClassifying(false);
       }
     }
-  };
+  }, [
+    question,
+    enableDecisionSupport,
+    enableEthicalGuardrails,
+    settings.durationShort
+  ]);
 
   // Track ad view time when component unmounts or ad changes
-  const trackViewTime = () => {
+  const trackViewTime = useCallback(() => {
     if (viewStartTime && adContent && impressionId) {
       const viewTimeMs = Date.now() - viewStartTime;
       
@@ -373,7 +378,7 @@ export default function SmartAdDisplay({
         console.error('Failed to record view time:', err);
       });
     }
-  };
+  }, [viewStartTime, adContent, impressionId, onAdImpression]);
 
   // Effect to trigger entrance animation on mount
   useEffect(() => {
@@ -395,7 +400,7 @@ export default function SmartAdDisplay({
         visibilityObserver.current = null;
       }
     };
-  }, []);
+  }, [trackViewTime]);
 
   // Effect to classify question when it changes
   useEffect(() => {
@@ -403,7 +408,7 @@ export default function SmartAdDisplay({
       setAdReady(false);
       classifyAndGetAds(question);
     }
-  }, [question]);
+  }, [question, classifyAndGetAds]);
 
   // Add effect to connect to content timing service
   useEffect(() => {

@@ -354,7 +354,9 @@ const EngagementFunnel: React.FC<EngagementFunnelProps> = ({
     theme, 
     horizontalAlignment, 
     onStageClick, 
-    selectedStage
+    selectedStage,
+    title,
+    subtitle
   ]);
   
   // Generate unique ID for the container

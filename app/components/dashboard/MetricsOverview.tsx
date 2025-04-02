@@ -127,7 +127,7 @@ export default function MetricsOverview({ companyId, category }: MetricsOverview
     };
     
     fetchData();
-  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, category, dashboardContext.filters]);
+  }, [dashboardContext.dateRange, dashboardContext.selectedCompany, companyId, category, dashboardContext.filters, dashboardContext]);
   
   // Format large numbers with abbreviations
   const formatNumber = (num: number): string => {
